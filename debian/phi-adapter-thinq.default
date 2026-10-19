@@ -1,4 +1,4 @@
-# phi-thinq-routed reads its host name from here.
+# phi-thinq-routed reads its host name from here (/etc/default/phi-adapter-thinq).
 #
 # PHI_THINQ_HOST is the DNS name the appliances resolve to this box: it is the
 # CN of the server certificate, what /route answers as apiServer and

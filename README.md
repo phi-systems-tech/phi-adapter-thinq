@@ -22,7 +22,7 @@ Two programs in one package:
   `devices/`. TLS 1.2 only, legacy suites, `@SECLEVEL=0` - the profile of
   the module families (§6). Port 443 through `CAP_NET_BIND_SERVICE`, as the
   `phi` user. Disabled until `PHI_THINQ_HOST` is set in
-  `/etc/default/phi-thinq-routed`.
+  `/etc/default/phi-adapter-thinq`.
 - **`phi_adapter_thinq_ipc`** - the MQTT half (§4). One instance on the
   box's own broker (the local 1883 listener, its own account), subscribed to
   `clip/#` and `$aws/#`. It answers `preDeploy`/`deploy` with
@@ -67,7 +67,7 @@ with these channels (ROADMAP M4).
 
 ## Enrolling an appliance, by hand
 
-1. `PHI_THINQ_HOST=<box dns name>` in `/etc/default/phi-thinq-routed`,
+1. `PHI_THINQ_HOST=<box dns name>` in `/etc/default/phi-adapter-thinq`,
    `systemctl enable --now phi-thinq-routed`. The CA and the server
    certificate appear in `/var/lib/phi/thinq`.
 2. The 8883 listener: `examples/mosquitto-thinq.conf` to
