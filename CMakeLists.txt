@@ -95,6 +95,5 @@ install(TARGETS phi_adapter_thinq_ipc
 install(TARGETS phi-thinq-routed
     RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/phi)
 install(FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/examples/mosquitto-thinq.conf"
     "${CMAKE_CURRENT_SOURCE_DIR}/examples/dnsmasq-thinq.conf"
     DESTINATION ${CMAKE_INSTALL_DOCDIR}/examples)
