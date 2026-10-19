@@ -1,3 +1,10 @@
+phi-adapter-thinq (0.1.1-1) trixie; urgency=medium
+
+  * The broker account is read from the adapter record, where the intent
+    rule puts it; the form's fields override.
+
+ -- Marius Schumacher <marius.schumacher@phisys.com>  Sun, 19 Oct 2026 14:50:00 +0200
+
 phi-adapter-thinq (0.1.0-1) trixie; urgency=medium
 
   * First scaffold of the local ThinQ adapter: AABB framing, the MQTT
