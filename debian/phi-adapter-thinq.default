@@ -5,5 +5,5 @@
 # mqttServer, and what dnsmasq has to resolve for them. A name, not an
 # address, and not an mDNS name - the module resolves it through plain DNS.
 #
-# Set it, then: systemctl enable --now phi-thinq-routed
+# Set it, then: phi-cli backend restart thinq@main
 #PHI_THINQ_HOST=phi-box.lan

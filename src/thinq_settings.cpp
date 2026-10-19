@@ -20,7 +20,10 @@ ThinqSettings settingsFromAdapter(const v1::Adapter &adapter, const Json &meta)
     const int port = jsonInt(meta, "brokerPort", fallbackPort);
     out.brokerPort = static_cast<std::uint16_t>(port > 0 && port <= 0xFFFF ? port : kDefaultBrokerPort);
 
+    // `user` is what an adapter intent writes, `username` what the form says.
     out.username = str::trimmed(jsonString(meta, "username"));
+    if (out.username.empty())
+        out.username = str::trimmed(jsonString(meta, "user"));
     out.password = jsonString(meta, "password");
     const int retry = jsonInt(meta, "retryIntervalMs", kDefaultRetryIntervalMs);
     out.retryIntervalMs = retry >= 1000 ? retry : kDefaultRetryIntervalMs;

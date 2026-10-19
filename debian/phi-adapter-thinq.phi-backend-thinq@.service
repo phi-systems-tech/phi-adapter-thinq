@@ -1,0 +1,37 @@
+[Unit]
+Description=LG ThinQ cloud stand-in %i (phi): /route and the box CA
+Documentation=file:///usr/share/doc/phi-adapter-thinq
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# The same user as everything else phi runs; see phi-backend-z2m@.service.
+User=phi
+Group=phi
+# The host name the appliances resolve to this box is the operator's to set;
+# the broker account the host layer hands this backend arrives in the second
+# file, which it rewrites before every start.
+EnvironmentFile=-/etc/default/phi-adapter-thinq
+EnvironmentFile=-/var/lib/phi/host/backends/thinq@%i.env
+# One directory per instance: the CA, the server leaf and the certificates
+# issued to appliances. The name matches what `backendDataDir()` derives.
+ExecStart=/usr/libexec/phi/phi-thinq-routed --state-dir /var/lib/phi/backends/thinq@%i
+StateDirectory=phi/backends/thinq@%i
+StateDirectoryMode=0750
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=phi-backend-thinq@%i
+
+# Port 443 without root: the one capability, and nothing else.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

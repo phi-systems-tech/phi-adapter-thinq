@@ -1,0 +1,3 @@
+share/backend-thinq.json usr/share/phi/backends
+share/intent-backend-thinq.json usr/share/phi/intents/backends
+share/intent-adapter-thinq.json usr/share/phi/intents/adapters

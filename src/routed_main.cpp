@@ -95,7 +95,7 @@ std::optional<Options> parseOptions(int argc, char **argv)
         out.host = env;
     if (const char *env = std::getenv("PHI_THINQ_STATE_DIR"); env && std::string(env) != "")
         out.stateDir = env;
-    if (out.host.empty() || out.port <= 0 || out.apiPort <= 0 || out.mqttPort <= 0) {
+    if (out.port <= 0 || out.apiPort <= 0 || out.mqttPort <= 0) {
         usage();
         return std::nullopt;
     }
@@ -313,6 +313,14 @@ int main(int argc, char **argv)
     if (!options)
         return 2;
     const Options &o = *options;
+    // Not configured is not a failure: the unit would be restarted every five
+    // seconds for as long as nobody has set the name. It is said once and the
+    // process ends; `phi-cli backend restart thinq@main` after setting it.
+    if (o.host.empty()) {
+        logLine("info", "no host name configured (PHI_THINQ_HOST in /etc/default/phi-adapter-thinq); "
+                        "nothing to serve until it is set");
+        return 0;
+    }
     std::signal(SIGPIPE, SIG_IGN);
     std::signal(SIGTERM, onSignal);
     std::signal(SIGINT, onSignal);

@@ -1,0 +1,18 @@
+{
+  "kind": "thinq",
+  "displayName": "LG ThinQ cloud stand-in",
+  "unitPrefix": "phi-backend-thinq@",
+  "dataPrefix": "thinq@",
+  "environment": {
+    "brokerUser": "PHI_THINQ_BROKER_USER",
+    "brokerPassword": "PHI_THINQ_BROKER_PASSWORD"
+  },
+  "brokerTopics": ["clip/#", "$aws/#", "lime/#"],
+  "brokerPatterns": [
+    "clip/provisioning/devices/%u",
+    "clip/provisioning/devices/%u/#",
+    "$aws/rules/+/clip/devices/%u/#",
+    "$aws/rules/+/clip/provisioning/devices/%u",
+    "lime/devices/%u"
+  ]
+}
