@@ -1,3 +1,13 @@
+phi-adapter-thinq (0.1.2-1) trixie; urgency=medium
+
+  * phi-thinq-routed no longer mints a CA of its own: it signs with the box
+    CA phi-mosquitto keeps under /var/lib/phi/tls (--ca-dir, PHI_TLS_DIR)
+    and re-issues its own leaf when that CA or the host name changes. The
+    8883 listener lives in phi-mosquitto's drop-in now; the example drop-in
+    is gone, and the package recommends phi-mosquitto rather than mosquitto.
+
+ -- Marius Schumacher <marius.schumacher@phisys.com>  Mon, 19 Oct 2026 16:20:00 +0200
+
 phi-adapter-thinq (0.1.1-1) trixie; urgency=medium
 
   * The broker account is read from the adapter record, where the intent

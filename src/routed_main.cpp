@@ -1,8 +1,9 @@
 // phi-thinq-routed: the HTTPS half of the cloud the appliances are pointed
 // at (docs/thinq-protocol.md §3, §6). It answers `/route`, hands out the
-// box CA as both trust anchors, and signs each module's CSR. The CA and the
-// server leaf are minted on first start into the state directory; the
-// broker's 8883 listener uses the same files.
+// box CA as both trust anchors, and signs each module's CSR. The CA is the
+// box's, minted by phi-mosquitto (phi-mosquitto-tls) under /var/lib/phi/tls
+// and shared with the broker's 8883 listener; only the leaf this service
+// presents on 443 is minted here, into the state directory.
 //
 // Small and sequential on purpose: one appliance enrols at a time, each
 // request is a few hundred bytes, and a blocking accept loop with socket
@@ -53,6 +54,7 @@ void logLine(const char *level, const std::string &text)
 struct Options {
     std::string host;
     std::string stateDir = "/var/lib/phi/thinq";
+    std::string caDir = "/var/lib/phi/tls";
     int port = 443;
     int apiPort = 443;
     int mqttPort = 8883;
@@ -61,11 +63,12 @@ struct Options {
 void usage()
 {
     std::fprintf(stderr,
-                 "usage: phi-thinq-routed --host <dns-name> [--state-dir <dir>] [--port 443] "
-                 "[--api-port 443] [--mqtt-port 8883]\n"
+                 "usage: phi-thinq-routed --host <dns-name> [--state-dir <dir>] [--ca-dir <dir>] "
+                 "[--port 443] [--api-port 443] [--mqtt-port 8883]\n"
                  "  --host      the DNS name the appliances resolve to this box; it is the CN of the\n"
                  "              server certificate and what /route answers\n"
-                 "  --state-dir where the CA, the server leaf and the issued device certificates live\n"
+                 "  --state-dir where the server leaf and the issued device certificates live\n"
+                 "  --ca-dir    where the box CA is (ca.key, ca.crt; phi-mosquitto-tls mints it)\n"
                  "  --api-port  what /route advertises as apiServer (usually --port)\n");
 }
 
@@ -79,6 +82,8 @@ std::optional<Options> parseOptions(int argc, char **argv)
             out.host = argv[++i];
         } else if (arg == "--state-dir" && hasValue) {
             out.stateDir = argv[++i];
+        } else if (arg == "--ca-dir" && hasValue) {
+            out.caDir = argv[++i];
         } else if (arg == "--port" && hasValue) {
             out.port = std::atoi(argv[++i]);
             out.apiPort = out.port;
@@ -95,6 +100,8 @@ std::optional<Options> parseOptions(int argc, char **argv)
         out.host = env;
     if (const char *env = std::getenv("PHI_THINQ_STATE_DIR"); env && std::string(env) != "")
         out.stateDir = env;
+    if (const char *env = std::getenv("PHI_TLS_DIR"); env && std::string(env) != "")
+        out.caDir = env;
     if (out.port <= 0 || out.apiPort <= 0 || out.mqttPort <= 0) {
         usage();
         return std::nullopt;
@@ -133,33 +140,31 @@ bool writeFile(const std::string &path, const std::string &data, mode_t mode)
     return ::rename(tmp.c_str(), path.c_str()) == 0;
 }
 
-/// The CA once, the leaf whenever the host name changes.
-std::optional<KeyAndCert> loadOrMintCa(const Options &o)
+/// The box CA, which this service does not own: phi-mosquitto mints it before
+/// the broker starts, so that the 8883 listener and this service vouch for
+/// the same anchor. Missing is a configuration error, not something to paper
+/// over with a second CA the broker would never trust.
+std::optional<KeyAndCert> loadCa(const Options &o)
 {
-    KeyAndCert ca{readFile(o.stateDir + "/ca.key"), readFile(o.stateDir + "/ca.crt")};
-    if (!ca.keyPem.empty() && !ca.certPem.empty())
-        return ca;
-    std::string error;
-    const std::optional<KeyAndCert> minted = mintCa("phi ThinQ CA", kCaDays, &error);
-    if (!minted) {
-        logLine("error", "cannot mint the CA: " + error);
+    KeyAndCert ca{readFile(o.caDir + "/ca.key"), readFile(o.caDir + "/ca.crt")};
+    if (ca.keyPem.empty() || ca.certPem.empty()) {
+        logLine("error", "no box CA in " + o.caDir + " (ca.key, ca.crt): phi-mosquitto's phi-mosquitto-tls mints it, "
+                             "and the key must be readable by this user");
         return std::nullopt;
     }
-    // The key is group-readable: mosquitto reads the leaf key from the same
-    // directory, and the group is the way it gets to.
-    if (!writeFile(o.stateDir + "/ca.key", minted->keyPem, 0600) || !writeFile(o.stateDir + "/ca.crt", minted->certPem, 0644)) {
-        logLine("error", "cannot write the CA into " + o.stateDir);
-        return std::nullopt;
-    }
-    logLine("info", "minted the box CA, fingerprint " + certificateFingerprint(minted->certPem));
-    return minted;
+    logLine("info", "using the box CA, fingerprint " + certificateFingerprint(ca.certPem));
+    return ca;
 }
 
+/// The leaf this service presents: minted whenever the host name or the CA
+/// behind it changed.
 std::optional<KeyAndCert> loadOrMintLeaf(const Options &o, const KeyAndCert &ca)
 {
     KeyAndCert leaf{readFile(o.stateDir + "/server.key"), readFile(o.stateDir + "/server.crt")};
     const std::string host = readFile(o.stateDir + "/server.host");
-    if (!leaf.keyPem.empty() && !leaf.certPem.empty() && host == o.host)
+    const std::string issuer = readFile(o.stateDir + "/server.ca");
+    const std::string caFingerprint = certificateFingerprint(ca.certPem);
+    if (!leaf.keyPem.empty() && !leaf.certPem.empty() && host == o.host && issuer == caFingerprint)
         return leaf;
     std::string error;
     const std::optional<KeyAndCert> minted = mintServerLeaf(ca, o.host, kLeafDays, &error);
@@ -167,8 +172,8 @@ std::optional<KeyAndCert> loadOrMintLeaf(const Options &o, const KeyAndCert &ca)
         logLine("error", "cannot mint the server certificate: " + error);
         return std::nullopt;
     }
-    if (!writeFile(o.stateDir + "/server.key", minted->keyPem, 0640) || !writeFile(o.stateDir + "/server.crt", minted->certPem, 0644)
-        || !writeFile(o.stateDir + "/server.host", o.host, 0644)) {
+    if (!writeFile(o.stateDir + "/server.key", minted->keyPem, 0600) || !writeFile(o.stateDir + "/server.crt", minted->certPem, 0644)
+        || !writeFile(o.stateDir + "/server.host", o.host, 0644) || !writeFile(o.stateDir + "/server.ca", caFingerprint, 0644)) {
         logLine("error", "cannot write the server certificate into " + o.stateDir);
         return std::nullopt;
     }
@@ -328,7 +333,7 @@ int main(int argc, char **argv)
     ::mkdir(o.stateDir.c_str(), 0750);
     ::mkdir((o.stateDir + "/devices").c_str(), 0750);
 
-    const std::optional<KeyAndCert> ca = loadOrMintCa(o);
+    const std::optional<KeyAndCert> ca = loadCa(o);
     if (!ca)
         return 1;
     const std::optional<KeyAndCert> leaf = loadOrMintLeaf(o, *ca);

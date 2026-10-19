@@ -15,9 +15,11 @@ Two programs in one package:
 
 - **`phi-thinq-routed`** (`/usr/libexec/phi/`) - the HTTPS half (§3), run
   by the host layer as the backend `thinq@main` (kind descriptor
-  `share/backend-thinq.json`, unit `phi-backend-thinq@main`). On first start
-  it mints the box CA and a server certificate for the box's DNS name into
-  `/var/lib/phi/backends/thinq@main`. It then answers `GET /route` with that
+  `share/backend-thinq.json`, unit `phi-backend-thinq@main`). It signs with
+  the box CA that `phi-mosquitto` minted under `/var/lib/phi/tls` - the same
+  anchor the broker's 8883 listener trusts - and mints only its own server
+  certificate for the box's DNS name into
+  `/var/lib/phi/backends/thinq@main`. It answers `GET /route` with that
   name as `apiServer` and `mqttServer`, hands the CA out as both trust
   anchors under `/route/certificate`, and signs each module's CSR
   (`POST /device/<uuid>/certificate`), recording the result under
@@ -62,8 +64,13 @@ with these channels (ROADMAP M4).
 
 - Captures. Everything in §7 of the spec is open; until then the status
   channels read what the hypothesis reads, labelled as such.
-- The 8883 listener and the DNS override are example drop-ins under
+- The DNS override is an example drop-in under
   `/usr/share/doc/phi-adapter-thinq/examples/`, not applied by the package.
+  Whose it should be (not this adapter's, not phi-mosquitto's) is open.
+- mosquitto cannot be told to allow legacy renegotiation; if a module needs
+  it on 8883 (routed allows it on 443), that is a capture question first.
+- Port 443 is also where nginx fronts the UI on an appliance; the two have
+  not been reconciled.
 - The SoftAP step (§2) is the phi-magic app's (M8). Until it exists, a
   module is re-pointed with LG's own app and the DNS override in place.
 - `req_timesync` goes unanswered; the module works without (§4.4).
@@ -71,11 +78,11 @@ with these channels (ROADMAP M4).
 ## Enrolling an appliance, by hand
 
 1. `PHI_THINQ_HOST=<box dns name>` in `/etc/default/phi-adapter-thinq`,
-   `phi-cli backend restart thinq@main`. The CA and the server certificate
-   appear in `/var/lib/phi/backends/thinq@main`.
-2. The 8883 listener: `examples/mosquitto-thinq.conf` to
-   `/etc/mosquitto/conf.d/`, mosquitto can read `server.key`; reload. The
-   ACL is already written by the host layer.
+   `phi-cli backend restart thinq@main`. The server certificate appears in
+   `/var/lib/phi/backends/thinq@main`; the CA is `/var/lib/phi/tls/ca.crt`.
+2. The 8883 listener is phi-mosquitto's and already up, with the ACL the
+   host layer wrote. Its certificate carries the box's host name; if
+   `PHI_THINQ_HOST` is another name, `phi-mosquitto-tls <name>` re-issues it.
 3. DNS: `examples/dnsmasq-thinq.conf` with the box address and the
    appliance MACs; the appliance must get the box as its resolver.
 4. Reset the appliance's WiFi and set it up again with the LG app; the

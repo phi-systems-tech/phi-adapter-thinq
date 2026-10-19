@@ -14,8 +14,10 @@ Group=phi
 # file, which it rewrites before every start.
 EnvironmentFile=-/etc/default/phi-adapter-thinq
 EnvironmentFile=-/var/lib/phi/host/backends/thinq@%i.env
-# One directory per instance: the CA, the server leaf and the certificates
-# issued to appliances. The name matches what `backendDataDir()` derives.
+# One directory per instance: the server leaf and the certificates issued to
+# appliances. The name matches what `backendDataDir()` derives. The CA it
+# signs with is the box's, /var/lib/phi/tls (phi-mosquitto-tls), readable
+# through the phi group.
 ExecStart=/usr/libexec/phi/phi-thinq-routed --state-dir /var/lib/phi/backends/thinq@%i
 StateDirectory=phi/backends/thinq@%i
 StateDirectoryMode=0750
