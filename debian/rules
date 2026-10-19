@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --buildsystem=cmake --builddirectory=build/deb
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DPHI_ADAPTER_THINQ_USE_LOCAL_ADAPTER_SDK=OFF
+
+# Disabled until the operator has set the host name: the unit needs --host,
+# which is per box (see /etc/default/phi-thinq-routed).
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start --name=phi-thinq-routed

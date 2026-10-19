@@ -1,0 +1,9 @@
+# phi-thinq-routed reads its host name from here.
+#
+# PHI_THINQ_HOST is the DNS name the appliances resolve to this box: it is the
+# CN of the server certificate, what /route answers as apiServer and
+# mqttServer, and what dnsmasq has to resolve for them. A name, not an
+# address, and not an mDNS name - the module resolves it through plain DNS.
+#
+# Set it, then: systemctl enable --now phi-thinq-routed
+#PHI_THINQ_HOST=phi-box.lan

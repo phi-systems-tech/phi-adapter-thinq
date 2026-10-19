@@ -1,0 +1,26 @@
+[Unit]
+Description=Phi ThinQ bootstrap service (/route for LG appliances)
+Documentation=file:///usr/share/doc/phi-adapter-thinq
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=phi
+Group=phi
+EnvironmentFile=-/etc/default/phi-thinq-routed
+ExecStart=/usr/libexec/phi/phi-thinq-routed --state-dir /var/lib/phi/thinq
+Restart=on-failure
+RestartSec=5
+# Port 443 without root: the one capability, and nothing else.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+StateDirectory=phi/thinq
+StateDirectoryMode=0750
+
+[Install]
+WantedBy=multi-user.target

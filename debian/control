@@ -1,0 +1,18 @@
+Source: phi-adapter-thinq
+Section: net
+Priority: optional
+Maintainer: Marius Schumacher <marius.schumacher@phisys.com>
+Build-Depends: debhelper-compat (= 13), cmake, ninja-build, pkg-config, nlohmann-json3-dev, libssl-dev, libmosquitto-dev, phi-adapter-sdk-dev (>= 0.22.0)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://phisys.com
+
+Package: phi-adapter-thinq
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, phi-adapter-sdk (>= 0.22.0)
+Recommends: mosquitto, dnsmasq
+Description: PHI LG ThinQ appliance adapter (local)
+ LG ThinQ washers and dishwashers without LG's cloud: the box answers the
+ module's bootstrap (phi-thinq-routed, HTTPS), takes it onto its own
+ mosquitto, and this IPC sidecar sits on the device topics - answering the
+ provisioning handshake, decoding the status frames and sending commands.
