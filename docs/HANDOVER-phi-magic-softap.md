@@ -12,8 +12,13 @@ phi-magic-app (`src/client/softap.*`, `thinqsetup.*`, `wifiprovisioner.*`,
 commit pending) has the §2 sequence of `phi-core/docs/thinq-protocol.md`:
 
 1. Join the access point `LGE_XXX_yyyy` with password `yyyyyyyy`
-   (NEHotspotConfiguration, `joinOnce`; the person types the name, iOS
-   cannot scan).
+   (NEHotspotConfiguration, `joinOnce`). iOS cannot scan, so the name comes
+   one of three ways: typed in full; only `yyyy`, and the phone joins any
+   `LGE_*` network and then checks the name it landed on ends so; or a
+   `WIFI:S:...;P:...;;` QR code on the appliance, which the same camera as
+   the Matter code reads and routes to this page. **Whether LG prints such
+   a code on ours, and whether the display shows `yyyy`, is to be looked at
+   on the appliance.**
 2. TLS to `192.168.120.254:5500`, certificate not verified, TLS 1.2 or
    later as Qt's SecureTransport backend offers it. **Which suites that
    stack offers an RTL8711/RTL8720 module is the first open question**; the
