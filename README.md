@@ -75,7 +75,12 @@ with these channels (ROADMAP M4).
   what the box has to have ready for it, and the order of the first run,
   is `docs/HANDOVER-phi-magic-softap.md`. Until then a module is
   re-pointed with LG's own app and the DNS override in place.
-- `req_timesync` goes unanswered; the module works without (§4.4).
+- `req_timesync` is answered with seven bytes of UTC (`resp_timesync`), every
+  frame but status and heartbeat is acknowledged under the `ack` command,
+  and a dishwasher gets the start packet `F0 ED 11 21 01 00 00 00 18 00`
+  after provisioning. All three are observed cloud behaviour, not
+  documented protocol; the first enrolment of the D0211 without them ended
+  in the undeploy loop of §2.3.
 
 ## Enrolling an appliance, by hand
 

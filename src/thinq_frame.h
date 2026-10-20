@@ -48,6 +48,18 @@ std::optional<Bytes> encodeFrame(const Bytes &contents);
 /// checksum are wrong.
 std::optional<Frame> decodeFrame(const Bytes &frame);
 
+/// The cloud's delivery acknowledgement for a frame the appliance sent,
+/// as frame contents (not yet wrapped), or nullopt for the frame types
+/// the cloud leaves unanswered: the appliance's own acks (`00`), the
+/// `C3` heartbeat and bare `EB`/`EC` status records. The shape is
+/// `F0 00 <type> 04`, plus the envelope's 16-bit sequence number for an
+/// `<class> 0A` envelope. Unacknowledged, an appliance repeats a frame up
+/// to ten times and never finishes its content sync - which is how a
+/// freshly enrolled dishwasher came to send its identification record over
+/// and over and then undeploy. Observed behaviour of LG's cloud; see the
+/// spec's §5.1 note on acks.
+std::optional<Bytes> cloudAckFor(const Bytes &contents, bool longFrame = false);
+
 /// `"AABB"` → `{0xAA, 0xBB}`; whitespace between bytes is skipped; nullopt on
 /// an odd count or a non-hex character.
 std::optional<Bytes> hexToBytes(std::string_view hex);

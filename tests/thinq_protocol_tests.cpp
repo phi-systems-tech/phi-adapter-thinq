@@ -87,6 +87,53 @@ void testCrc16Xmodem()
     PHI_CHECK(crc16Xmodem({}) == 0x0000);
 }
 
+// The cloud's delivery ack: by type, by sequence for envelopes, never for
+// status, heartbeat and the appliance's own acks.
+void testCloudAck()
+{
+    // The D0211 identification record: class 32, type 31.
+    const Bytes ident = bytesOf("32 31 02 01 53 41 41 34");
+    const std::optional<Bytes> ack = cloudAckFor(ident);
+    PHI_CHECK(ack.has_value());
+    PHI_CHECK(*ack == bytesOf("F0 00 31 04"));
+    const std::optional<Bytes> framed = encodeFrame(*ack);
+    PHI_CHECK(framed.has_value());
+    PHI_CHECK(bytesToHex(*framed) == "AA08F000310482BB");
+
+    // An envelope carries its sequence number at 5..6.
+    const Bytes envelope = bytesOf("20 0A 00 39 00 03 90 00 01 00 EB 00 27 00");
+    const std::optional<Bytes> seqAck = cloudAckFor(envelope);
+    PHI_CHECK(seqAck.has_value());
+    PHI_CHECK(*seqAck == bytesOf("F0 00 0A 04 03 90"));
+    // Too short an envelope is left alone, as the cloud leaves it.
+    PHI_CHECK(!cloudAckFor(bytesOf("20 0A 00 39 00 03 90")).has_value());
+    // A long frame's checksum byte does not count towards the header.
+    PHI_CHECK(!cloudAckFor(bytesOf("20 0A 00 39 00 03 90 00 01 00 EB 00 27"), true).has_value());
+    PHI_CHECK(cloudAckFor(bytesOf("20 0A 00 39 00 03 90 00 01 00 EB 00 27 00"), true).has_value());
+
+    PHI_CHECK(!cloudAckFor(bytesOf("32 EB 01 02")).has_value());
+    PHI_CHECK(!cloudAckFor(bytesOf("32 EC 01 02")).has_value());
+    PHI_CHECK(!cloudAckFor(bytesOf("20 C3")).has_value());
+    PHI_CHECK(!cloudAckFor(bytesOf("20 00 26")).has_value());
+    PHI_CHECK(!cloudAckFor(bytesOf("20")).has_value());
+}
+
+void testAckAndTimesyncMessages()
+{
+    const std::string ack = ackMessage("u-1", "AA08F000310482BB", 7);
+    PHI_CHECK(ack.find("\"cmd\":\"ack\"") != std::string::npos);
+    PHI_CHECK(ack.find("\"data\":\"AA08F000310482BB\"") != std::string::npos);
+    PHI_CHECK(ack.find("\"type\":1") != std::string::npos);
+    PHI_CHECK(ack.find("\"did\":\"u-1\"") != std::string::npos);
+
+    // 2026-10-20 13:05:07 UTC, a Tuesday: 26, 9 (October, 0-based), 20, 13, 5, 7, 2.
+    const Bytes seven = timesyncBytes(1792501507);
+    PHI_CHECK(seven == bytesOf("1A 09 14 0D 05 07 02"));
+    const std::string sync = timesyncMessage("u-1", 8, 1792501507);
+    PHI_CHECK(sync.find("\"cmd\":\"resp_timesync\"") != std::string::npos);
+    PHI_CHECK(sync.find("\"data\":\"GgkUDQUHAg==\"") != std::string::npos);
+}
+
 void testEncodeSpecVector()
 {
     // Encoding the contents of the §5.1 vector must give the vector back.
@@ -815,6 +862,8 @@ int main()
 {
     testChecksumOfSpecVector();
     testCrc16Xmodem();
+    testCloudAck();
+    testAckAndTimesyncMessages();
     testEncodeSpecVector();
     testEncodeTooLong();
     testDecodeSpecVector();

@@ -83,6 +83,26 @@ std::optional<Frame> decodeFrame(const Bytes &frame)
     return out;
 }
 
+std::optional<Bytes> cloudAckFor(const Bytes &contents, bool longFrame)
+{
+    if (contents.size() < 2)
+        return std::nullopt;
+    const std::uint8_t type = contents[1];
+    if (type == 0x00 || type == 0xC3 || type == 0xEB || type == 0xEC)
+        return std::nullopt;
+    Bytes ack{0xF0, 0x00, type, 0x04};
+    if (type == 0x0A) {
+        // <class> 0A [len16] [seq16] ...: the sequence number sits at 5..6,
+        // and the cloud ignores an envelope shorter than its header.
+        const std::size_t usable = contents.size() - (longFrame ? 1 : 0);
+        if (usable < 13)
+            return std::nullopt;
+        ack.push_back(contents[5]);
+        ack.push_back(contents[6]);
+    }
+    return ack;
+}
+
 std::optional<Bytes> hexToBytes(std::string_view hex)
 {
     Bytes out;

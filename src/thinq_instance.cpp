@@ -99,6 +99,8 @@ struct Appliance {
     bool registered = false;
     bool announced = false;
     bool online = false;
+    /// Whether the start packet went out for this provisioning round.
+    bool started = false;
     /// The last decoded washer status, for the programme a start repeats.
     std::optional<WasherStatus> washer;
     /// What the delayed-end channel was set to, for the next start.
@@ -322,10 +324,20 @@ private:
             appliance.registered = true;
             log(sdk::LogLevel::Info, sdk::LogCategory::Protocol, "%1 acknowledged provisioning", {uuid});
         } else if (cmd == "req_timesync") {
-            // LG's answer is undocumented and the module works without one
-            // (§4.4). rssi -100 marks a reboot.
-            log(sdk::LogLevel::Debug, sdk::LogCategory::Protocol, "%1 asked for the time (rssi %2)",
-                {uuid, std::to_string(parsed->rssi)});
+            // Seven bytes of UTC, base64, as `resp_timesync` (§4.4). rssi
+            // -100 marks a reboot.
+            std::string error;
+            if (!m_mqtt->publish(deviceTopic(uuid), timesyncMessage(uuid, nowMs(), nowMs() / 1000), 0, false, &error))
+                log(sdk::LogLevel::Warn, sdk::LogCategory::Network, "%1: resp_timesync failed: %2", {uuid, error});
+            else
+                log(sdk::LogLevel::Debug, sdk::LogCategory::Protocol, "%1 asked for the time (rssi %2); answered",
+                    {uuid, std::to_string(parsed->rssi)});
+        } else if (cmd == "undeploy") {
+            // The module is about to drop its registration and start over
+            // (§4.2); the next preDeploy is a new round.
+            appliance.registered = false;
+            appliance.started = false;
+            log(sdk::LogLevel::Info, sdk::LogCategory::Protocol, "%1 undeployed", {uuid});
         } else if (cmd == "device_packet") {
             onDevicePacket(appliance, *parsed);
         } else {
@@ -355,6 +367,23 @@ private:
         if (changed || !appliance.announced)
             announce(appliance, true);
         saveAppliances();
+        start(appliance);
+    }
+
+    /// What the cloud sends a dishwasher right after provisioning, once per
+    /// round: `F0 ED 11 21 01 00 00 00 18 00`, observed on the D0211. Its
+    /// meaning is not documented; without it the appliance never streams
+    /// its status. Washers get nothing here: an awake one streams unasked.
+    void start(Appliance &appliance)
+    {
+        if (appliance.started || appliance.family != Family::Dishwasher)
+            return;
+        appliance.started = true;
+        std::string error;
+        if (!publishFrame(appliance, {0xF0, 0xED, 0x11, 0x21, 0x01, 0x00, 0x00, 0x00, 0x18, 0x00}, &error))
+            log(sdk::LogLevel::Warn, sdk::LogCategory::Network, "%1: start packet failed: %2", {appliance.uuid, error});
+        else
+            log(sdk::LogLevel::Info, sdk::LogCategory::Protocol, "%1: sent the dishwasher start packet", {appliance.uuid});
     }
 
     void onDevicePacket(Appliance &appliance, const DeviceMessage &message)
@@ -377,6 +406,7 @@ private:
         if (frame->longFrame && !frame->longChecksumVerified)
             log(sdk::LogLevel::Debug, sdk::LogCategory::Protocol, "%1: long frame, checksum hypothesis misses: %2",
                 {appliance.uuid, hex});
+        acknowledge(appliance, *frame);
 
         if (const WasherLayout *layout = appliance.washerLayout()) {
             if (const std::optional<WasherStatus> status = decodeWasherStatus(*bytes, *layout)) {
@@ -470,6 +500,22 @@ private:
         // The washer's acknowledgement frame is not documented (§5.1); the
         // status that follows is the confirmation a user sees.
         answer(cmdId, v1::CmdStatus::Success, {});
+    }
+
+    /// The delivery ack the cloud gives every frame but status and
+    /// heartbeat (thinq_frame.h). Under the `ack` command, not `packet`.
+    void acknowledge(const Appliance &appliance, const Frame &frame)
+    {
+        const std::optional<Bytes> ack = cloudAckFor(frame.contents, frame.longFrame);
+        if (!ack)
+            return;
+        const std::optional<Bytes> wrapped = encodeFrame(*ack);
+        if (!wrapped)
+            return;
+        std::string error;
+        if (!m_mqtt->publish(deviceTopic(appliance.uuid), ackMessage(appliance.uuid, bytesToHex(*wrapped), nowMs()),
+                             0, false, &error))
+            log(sdk::LogLevel::Warn, sdk::LogCategory::Network, "%1: ack failed: %2", {appliance.uuid, error});
     }
 
     bool publishFrame(const Appliance &appliance, const Bytes &contents, std::string *error)

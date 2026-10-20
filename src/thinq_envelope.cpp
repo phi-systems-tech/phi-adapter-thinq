@@ -1,5 +1,7 @@
 #include "thinq_envelope.h"
 
+#include <ctime>
+
 namespace phicore::thinq::ipc {
 
 namespace {
@@ -75,6 +77,70 @@ std::string completeProvisioningMessage(std::string_view uuid, std::string_view 
     data["provisioningType"] = std::string(provisioningType);
     data["deployInterval"] = 600;
     msg["data"] = data;
+    return dump(msg);
+}
+
+std::string ackMessage(std::string_view uuid, std::string_view frameHex, std::int64_t mid)
+{
+    Json msg;
+    msg["did"] = std::string(uuid);
+    msg["mid"] = mid;
+    msg["cmd"] = "ack";
+    msg["type"] = 1;
+    msg["data"] = std::string(frameHex);
+    return dump(msg);
+}
+
+Bytes timesyncBytes(std::int64_t utc)
+{
+    const std::time_t t = static_cast<std::time_t>(utc);
+    std::tm tm{};
+    gmtime_r(&t, &tm);
+    return {static_cast<std::uint8_t>((tm.tm_year + 1900) % 100), static_cast<std::uint8_t>(tm.tm_mon),
+            static_cast<std::uint8_t>(tm.tm_mday),                static_cast<std::uint8_t>(tm.tm_hour),
+            static_cast<std::uint8_t>(tm.tm_min),                 static_cast<std::uint8_t>(tm.tm_sec),
+            static_cast<std::uint8_t>(tm.tm_wday)};
+}
+
+namespace {
+
+std::string base64(const Bytes &bytes)
+{
+    static const char *const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    std::size_t i = 0;
+    for (; i + 2 < bytes.size(); i += 3) {
+        const std::uint32_t n = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
+        out += alphabet[(n >> 18) & 63];
+        out += alphabet[(n >> 12) & 63];
+        out += alphabet[(n >> 6) & 63];
+        out += alphabet[n & 63];
+    }
+    if (i + 1 == bytes.size()) {
+        const std::uint32_t n = bytes[i] << 16;
+        out += alphabet[(n >> 18) & 63];
+        out += alphabet[(n >> 12) & 63];
+        out += "==";
+    } else if (i + 2 == bytes.size()) {
+        const std::uint32_t n = (bytes[i] << 16) | (bytes[i + 1] << 8);
+        out += alphabet[(n >> 18) & 63];
+        out += alphabet[(n >> 12) & 63];
+        out += alphabet[(n >> 6) & 63];
+        out += '=';
+    }
+    return out;
+}
+
+} // namespace
+
+std::string timesyncMessage(std::string_view uuid, std::int64_t mid, std::int64_t utc)
+{
+    Json msg;
+    msg["did"] = std::string(uuid);
+    msg["mid"] = mid;
+    msg["cmd"] = "resp_timesync";
+    msg["type"] = 1;
+    msg["data"] = base64(timesyncBytes(utc));
     return dump(msg);
 }
 

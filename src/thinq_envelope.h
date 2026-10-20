@@ -7,6 +7,8 @@
 #include "thinq_json.h"
 
 #include <cstdint>
+#include "thinq_frame.h"
+
 #include <optional>
 #include <string>
 #include <string_view>
@@ -57,6 +59,17 @@ std::string completeProvisioningMessage(std::string_view uuid, std::string_view 
 
 /// §4.4 `packet`: `frameHex` is a whole AABB frame.
 std::string packetMessage(std::string_view uuid, std::string_view frameHex, std::int64_t mid);
+
+/// §4.4 delivery acknowledgement: travels under its own command, `ack`,
+/// not `packet`; `frameHex` is the whole AABB frame of `cloudAckFor`.
+std::string ackMessage(std::string_view uuid, std::string_view frameHex, std::int64_t mid);
+
+/// §4.4 `resp_timesync`: seven bytes, base64 - UTC year mod 100, month
+/// (0-based), day of month, hours, minutes, seconds, weekday (0 = Sunday).
+/// `utc` is the time to answer with, seconds since the epoch.
+std::string timesyncMessage(std::string_view uuid, std::int64_t mid, std::int64_t utc);
+/// The seven bytes alone, for the tests.
+Bytes timesyncBytes(std::int64_t utc);
 
 /// The hex of a `device_packet`, or empty when `data` is not a string.
 std::string devicePacketHex(const DeviceMessage &message);
