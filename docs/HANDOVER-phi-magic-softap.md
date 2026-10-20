@@ -369,3 +369,30 @@ Settled by this:
   unknown.
 - The topic the module publishes on is the `publication.message` we gave
   it in `completeProvisioning` (`$aws/rules/clip_http_action_rule/clip/devices/<uuid>/message`).
+
+### 9a. `undeploy` after ten minutes [C]
+
+Broker, second session: connected 13:09:36, `preDeploy` →
+`completeProvisioning` (our `deployInterval: 600`) → ack. The same
+identification frame once more when the appliance was switched on (`per`
+went 5 → 12). Then, inside a ten-minute listen window, on the provisioning
+topic `clip/provisioning/devices/<uuid>`:
+
+```
+{"did":"<uuid>","kind":"D0211","cmd":"undeploy"}
+```
+
+and at 13:20:18 (+642 s from connect, i.e. `deployInterval` plus the
+keep-alive) mosquitto drops the client for timeout; no DHCP, no WiFi since.
+The first session went the same way sooner (connected 12:52:46, timeout
+12:57:21). The panel's Wi-Fi LED never lit.
+
+Reading: the module gives us `deployInterval` worth of time to finish
+what LG's cloud finishes after the ack, then undeploys and drops the link
+(the notes' "undeploy/re-register loop", §2.3/§4.2). What that step is,
+the notes do not say. Candidates, in order: (1) `req_timesync` sent right
+after connect goes unanswered (§4.4, answer format [?]; both listen windows
+today started after the connect, so the request itself was not even seen -
+the next listen covers a power-on), (2) a `deploy` round the cloud is
+expected to drive, (3) something over HTTPS after the CSR. The adapter
+is where this lands; the phone's part is done.
