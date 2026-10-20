@@ -396,3 +396,49 @@ today started after the connect, so the request itself was not even seen -
 the next listen covers a power-on), (2) a `deploy` round the cloud is
 expected to drive, (3) something over HTTPS after the CSR. The adapter
 is where this lands; the phone's part is done.
+
+### 9b. The first seconds after connect, captured [C]
+
+Third enrolment, 13:34, listener running before the module came up
+(`mosquitto_sub -v` on 1883, timestamps are the box's):
+
+```
+13:34:48  DHCP (tag thinq)                      → /route, CSR signed again, connect
+13:34:56  $aws/rules/clip_provisioning_rule/clip/provisioning/devices/<uuid>
+          {"mid":445937,"did":"<uuid>","kind":"D0211","cmd":"preDeploy","rssi":-72,
+           "fs":"idle","br":4800,"per":16,"data":{"appInfo":{"rollbackInfo":{"area_b":
+           "clip_hna_v1.9.230","active":"area_b","area_a":"clip_hna_v1.9.226"},
+           "modelName":"D0211","modelLanguage":"02","softVer":"1","ruleVer":"1",
+           "countryCode":"WW","subCountryCode":"WW","appVersion":"clip_hna_v1.9.230", …
+13:34:56  lime/devices/<uuid>   our completeProvisioning (provisioningType preDeploy, deployInterval 600)
+13:34:56  …/message              {"cmd":"completeProvisioning_ack","rssi":-72,"fs":"idle","br":4800,"per":16,"data":null,"type":1}
+13:36:26  …/message              device_packet, the same AA 37 32 31 … identification frame, rssi -67, per 1
+13:37:03  DHCP again (the module restarted its link)
+13:37:11  clip/provisioning/devices/<uuid>   {"did":"<uuid>","kind":"D0211","cmd":"undeploy"}
+13:37:11  preDeploy → completeProvisioning → ack, as above (per 43)
+13:40:33  device_packet, identification frame again
+```
+
+- **No `req_timesync` at all**, at any point. Strike §7 item 6 as the
+  cause; leave it as a question.
+- The module publishes `preDeploy` on the `$aws/rules/clip_provisioning_rule/…`
+  topic we handed it (so the flash write from §4.2 step 2 happened), and
+  `undeploy` on the bare `clip/provisioning/devices/<uuid>` topic.
+- The module's `preDeploy` carries more than the notes' example:
+  `rollbackInfo` with two firmware areas (`clip_hna_v1.9.226` and `.230`,
+  `.230` active), `modelLanguage "02"`, `softVer "1"`, `ruleVer "1"`. The
+  rest of the payload was cut by the listener; capture it whole next time
+  (`mosquitto_sub` without a line cut).
+- The cycle: connect, `preDeploy`/ack, 1.5–2.5 min later the
+  identification frame, then at some point `undeploy`, a fresh DHCP, a
+  fresh CSR, `preDeploy` again. The gap before `undeploy` was 10 min in
+  the second session and 2 min in the third; the module stays
+  `provisioningType preDeploy` throughout - it never moves to `deploy`.
+  So the step LG's cloud takes between `completeProvisioning_ack` and the
+  first `deploy` is the missing one, and it is not something the module
+  asks for on MQTT. Candidates now: a message from the cloud on
+  `lime/devices/<uuid>` after the ack (unknown shape), or an HTTPS call
+  the module expects to succeed (routed logged only `/route`, the anchors
+  and the CSR - nothing was refused). The panel's Wi-Fi LED stays dark the
+  whole time, which says the main board is told "not registered" by the
+  module.
