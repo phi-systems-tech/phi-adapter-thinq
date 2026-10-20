@@ -50,6 +50,59 @@ whatever the person typed), editable on the page. Whether those two fields
 make the module skip `/route` is §7's open question; the phone sends them
 either way.
 
+## 1a. First capture, dishwasher D0211, 2026-10-20 10:33 [C]
+
+Run from the iPhone with "only ask who it is"; nothing was changed on the
+appliance. Verbatim from the app's transcript:
+
+- Access point `LG_Smart_DishWasher2_open`, no password. **Not** the
+  `LGE_XXX_yyyy` scheme of §2.1; the `[LG_...]` one the notes mention as
+  seen before the setup sequence. How it was put into this mode: the
+  appliance's own menu (to be written down).
+- The module hands the phone `192.168.120.1/24`; the module is
+  `192.168.120.254`, port **5500** open; 443, 80 and 8080 on it closed.
+- TLS on 5500: **TLSv1.2, ECDHE-RSA-AES128-GCM-SHA256** against Apple's
+  stack, no CBC needed. Certificate: host name mismatch, untrusted root,
+  as expected; ignored.
+- `setDeviceInit` answers:
+  `{"type":"response","cmd":"setDeviceInit","data":{"protocolVer":"4.9","subErrorCode":"W008","result":"000"}}`
+- `getDeviceInfo` answers (`encrypt_val` shortened):
+
+  ```
+  {"type":"response","cmd":"getDeviceInfo","data":{"protocolVer":"4.9",
+  "mac":"14:7f:67:cf:d3:24","uuid":"c5c8f38b-15c6-19ff-bc00-147f67cfd324",
+  "deviceType":"204","modelName":"D0211","modemVer":"clip_hna_v1.9.230",
+  "demandType":"QCOM_QCA4010","isReg":"Y","supportsWpa3":"N","jitpCert":"N",
+  "bootId":"6657459293354554224","cctld":"","cctld_result":-79,"mdFota":"Y",
+  "softwareVer":"1","countryCode":"WW","encrypt_val":"DXeBdlzaf2r...NSLXQ==",
+  "eepromChecksum":"0","errorcodeDisplay":"0","remainingTime":"420",
+  "agentVer":"0","staticip":"Y","errSSID":"Villa Sabina","subErrorCode":"NONE",
+  "factoryResetCode":"0","ch":"10","extra":"POWER_ON|49401|encryptRes:0",
+  "regStep":0}}
+  ```
+
+What that settles for the box side:
+
+- **Module variant: `QCOM_QCA4010`, firmware `clip_hna_v1.9.230`,
+  protocol 4.9.** The TLS profile `routed` and mosquitto must offer is the
+  QCA4010 one, not the RTL one; the suite it chose on 5500 says it does
+  GCM. Whether it also accepts the `@SECLEVEL=0` legacy profile is not
+  contradicted, but it may not need it.
+- The uuid is `c5c8f38b-15c6-19ff-bc00-147f67cfd324` = `externalId` of the
+  device the adapter will announce; the MAC matches the DNS override entry.
+- `isReg: Y`, `regStep: 0`: registered with LG. `jitpCert: N`.
+- `encryptRes:0` and a 256-byte `encrypt_val`: the RSA public key with
+  lines at column 0 works on this firmware too.
+- `errSSID: "Villa Sabina"`: the network the module last used. The phone
+  was on `VSP`. **The QCA4010 is 2.4 GHz only**; if `VSP` is the 5 GHz
+  name, `setApInfo` has to carry the 2.4 GHz SSID, or the module never
+  comes home. To check in the router before the full run.
+- `staticip: Y`, `ch: 10`, `cctld_result: -79` (RSSI of the last link?):
+  recorded, meaning open.
+- Still open: the answers to `setCertInfo`, `setApInfo`, `releaseDev`, and
+  whether `apiServer`/`mqttServer` in `getDeviceInfo` skip `/route`. Those
+  need the full run, i.e. the box ready (§2).
+
 ## 2. What the box needs before the first run
 
 In order of "nothing works without it":
