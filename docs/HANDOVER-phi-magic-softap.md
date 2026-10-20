@@ -260,3 +260,31 @@ Then, on the box (dnsmasq log, tcpdump):
   `/etc/dnsmasq.d/thinq.conf` at 11:37. Whether that frees the loop is the
   next thing the log shows; if not, a power-cycle of the appliance (§2.3)
   is the next step, then a capture of what it does after the DNS answer.
+
+### 7a. After a power-cycle, 11:55 [C]
+
+The loop ended with the power-cycle (§2.3 was right; whether `local-ttl=60`
+mattered is not separable, keep it anyway). Then, in order:
+
+- DHCP with tag `thinq`, `query[A] common.lgthinq.com` → box, **then
+  `query[A] pi5.lan`**: the module read `/route`'s answer and used it.
+- `GET /route -> 200 (TLSv1.2, ECDHE-RSA-AES256-SHA)` in routed's journal:
+  the HTTPS side with this module is a CBC suite, the legacy profile is
+  needed there after all.
+- **No `GET /route/certificate`, no `POST /device/<uuid>/certificate`.**
+- Every 30 s a TLS connection to 8883: ClientHello 131 B, our flight
+  2163 B, the module's flight 691 B carrying a client certificate (682 B,
+  sha256WithRSAEncryption, not ours), our alert `unknown_ca` (0x30), FIN.
+  mosquitto: `certificate verify failed`. `tcpdump -X` of the module's
+  flight starts `16 03 03 02 ae 0b 00 02 aa …`.
+
+Reading: the module still holds the certificate from its LG registration
+(`isReg: Y`, `jitpCert: N`) and presents it; it only goes through §3.2/§3.3
+when it has none. `setDeviceInit` (answered `W008`) did not make it drop
+that. So the next step is on the appliance itself: its own reset of the
+WiFi/ThinQ registration (manual), after which `getDeviceInfo` should say
+`isReg: N`, and the run repeated. Not an adapter change.
+
+Also seen: `errorCode: "nS"` on the second `getDeviceInfo`; `homeNetwork`
+in the `setApInfo` answer confirms the module scans and reports channel
+and security of the SSID it was given.
