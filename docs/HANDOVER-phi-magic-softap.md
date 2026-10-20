@@ -540,3 +540,19 @@ undeploy at `deployInterval` still happens with acks in place (and if so,
 try the power-cycle after registration), the names of flag bits 0x02 and
 0x10, the identification record's meaning, and `device_log`. On the
 phone: remember the home network name between runs.
+
+## 13. Ten-minute mark passed, 15:05 [C]
+
+Provisioned 14:51:22 with 0.1.4 (acks, time answer, start packet), the
+module was still on the broker at 15:02:25 and 15:05:41, fourteen minutes
+on, no `undeploy`, frames on every change. The round before (13:58, same
+adapter behaviour) had undeployed at ten minutes, so one survival is not
+yet a rule; watch the next enrolments. 0.1.5 (door bit 0x08) went on the
+box at 15:01 during this session; the module's MQTT session is to
+mosquitto and was not touched by the adapter reload.
+
+State at the end of 2026-10-20: dishwasher DB365TXS enrolled with the box,
+values in the UI, adapter 0.1.5-1 on the box and in
+`build-artifacts/thinq-0.1.5` on taifun (not published to aptly), phone
+app with saved network names on the iPhone (phi-magic-app changes after
+f18d67c not yet committed).
