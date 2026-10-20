@@ -615,7 +615,7 @@ void testDecodeWasherRejects()
 
 Bytes dishwasherBlock()
 {
-    Bytes block(26, 0x00);
+    Bytes block(24, 0x00);
     block[0] = 2;
     block[1] = 2;
     block[3] = 3;
@@ -628,10 +628,18 @@ Bytes dishwasherBlock()
     return block;
 }
 
+// A block as the appliance frames it: [flag][len] + the body.
+Bytes headed(const Bytes &body)
+{
+    Bytes out = {0x00, static_cast<std::uint8_t>(body.size())};
+    out.insert(out.end(), body.begin(), body.end());
+    return out;
+}
+
 void testDecodeDishwasherState()
 {
     Bytes contents = {0x32, 0xEB};
-    const Bytes block = dishwasherBlock();
+    const Bytes block = headed(dishwasherBlock());
     contents.insert(contents.end(), block.begin(), block.end());
 
     const std::optional<DishwasherStatus> s = decodeDishwasherStatus(contents, dishwasherLayoutD0211());
@@ -654,25 +662,26 @@ void testDecodeDishwasherState()
 
 void testDecodeDishwasherChange()
 {
-    // `EC` carries the previous and the current block; for this layout the
-    // first one is the current one, and the result says it was a change.
-    Bytes current = dishwasherBlock();
-    Bytes previous(26, 0x00);
-    previous[0] = 1;
-    previous[5] = 1;
+    // `EC` carries the previous and the current block; on this appliance
+    // the current one comes last, and the result says it was a change.
+    Bytes current = headed(dishwasherBlock());
+    Bytes previousBody(24, 0x00);
+    previousBody[0] = 1;
+    previousBody[5] = 1;
+    const Bytes previous = headed(previousBody);
     Bytes contents = {0x32, 0xEC};
-    contents.insert(contents.end(), current.begin(), current.end());
     contents.insert(contents.end(), previous.begin(), previous.end());
+    contents.insert(contents.end(), current.begin(), current.end());
 
     const std::optional<DishwasherStatus> s = decodeDishwasherStatus(contents, dishwasherLayoutD0211());
     PHI_CHECK(s.has_value());
     PHI_CHECK(s && s->changed);
     PHI_CHECK(s && s->state == 2 && s->course == 5);
 
-    // A layout whose current block comes last reads the other one.
-    DishwasherLayout last = dishwasherLayoutD0211();
-    last.currentBlockFirst = false;
-    const std::optional<DishwasherStatus> t = decodeDishwasherStatus(contents, last);
+    // A layout whose current block comes first reads the other one.
+    DishwasherLayout first = dishwasherLayoutD0211();
+    first.currentBlockFirst = true;
+    const std::optional<DishwasherStatus> t = decodeDishwasherStatus(contents, first);
     PHI_CHECK(t.has_value());
     PHI_CHECK(t && t->state == 1 && t->course == 1);
 
