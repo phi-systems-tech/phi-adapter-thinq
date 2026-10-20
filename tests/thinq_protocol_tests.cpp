@@ -623,7 +623,7 @@ Bytes dishwasherBlock()
     block[5] = 5;
     block[7] = 1;
     block[8] = 5;
-    block[11] = 0x0E;
+    block[11] = 0x2C;
     block[12] = 0x21;
     return block;
 }
@@ -652,7 +652,7 @@ void testDecodeDishwasherState()
     PHI_CHECK(s->remainMinutes == 65);
     PHI_CHECK(s->course == 5);
     PHI_CHECK(s->options == 0x21);
-    // Flags 0x0E: door open, rinse aid and salt refill, but not the child lock.
+    // Flags 0x2C: door open (0x08), rinse aid (0x04) and salt (0x20) refill, no child lock.
     PHI_CHECK(s->doorOpen);
     PHI_CHECK(s->rinseRefill);
     PHI_CHECK(s->saltRefill);
@@ -725,7 +725,16 @@ void testDishwasherRealFrames()
     PHI_CHECK(s->course == 0x05);
     PHI_CHECK(s->initialMinutes == 3 * 60 + 0x35);
     PHI_CHECK(s->remainMinutes == 3 * 60 + 0x35);
+    PHI_CHECK(s->doorOpen); // flags 1A: the door was open
     PHI_CHECK(!s->changed);
+
+    // The door closed: flags 12, the current (last) block.
+    const std::optional<Frame> closed = decodeFrame(bytesOf(
+        "AA3A32EC001804000003350000033500001A00020201000000000000000000180100000335050003350000120002020100000000000000001CBB"));
+    PHI_CHECK(closed.has_value());
+    const std::optional<DishwasherStatus> d = decodeDishwasherStatus(closed->contents, layout);
+    PHI_CHECK(d.has_value());
+    PHI_CHECK(d && !d->doorOpen && d->state == 0x01);
 
     // Switched off: previous block first (state 01), current last (04).
     const std::optional<Frame> change = decodeFrame(bytesOf(

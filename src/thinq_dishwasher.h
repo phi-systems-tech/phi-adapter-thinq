@@ -47,10 +47,14 @@ struct DishwasherLayout {
     int remainHour = 7;
     int remainMinute = 8;
     int flags = 11;
+    /// Flags at [11]. Observed on the D0211, 2026-10-20: the door is bit
+    /// 0x08 (set while open, cleared on closing); 0x02 and 0x10 were set
+    /// throughout and are not yet named. Child lock and the two refill
+    /// bits stay where the hypothesis put them until seen.
     std::uint8_t childLockMask = 0x01;
-    std::uint8_t doorOpenMask = 0x02;
+    std::uint8_t doorOpenMask = 0x08;
     std::uint8_t rinseRefillMask = 0x04;
-    std::uint8_t saltRefillMask = 0x08;
+    std::uint8_t saltRefillMask = 0x20;
     int options = 12;
 };
 

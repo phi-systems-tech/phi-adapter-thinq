@@ -1,3 +1,11 @@
+phi-adapter-thinq (0.1.5-1) trixie; urgency=medium
+
+  * D0211: the door is flag bit 0x08, seen opening and closing; 0x02 and
+    0x10 are set throughout and unnamed; the salt bit moves out of the
+    way to 0x20 until seen.
+
+ -- Marius Schumacher <marius.schumacher@phisys.com>  Tue, 20 Oct 2026 12:58:12 +0000
+
 phi-adapter-thinq (0.1.4-1) trixie; urgency=medium
 
   * Dishwasher status as the D0211 really sends it: each block is

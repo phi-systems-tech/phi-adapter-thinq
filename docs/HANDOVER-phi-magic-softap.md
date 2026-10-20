@@ -517,3 +517,26 @@ BCD 35 is to be read off the display. Adapter 0.1.4-1 decodes this.
 
 Also new: `device_log` (`registration_time` with PERF_* timings) right
 after provisioning - logged, not acked, no harm seen.
+
+## 12. With 0.1.4: values in the UI, and the end of the day
+
+Enrolment 14:51:22 (the previous try failed on `vsp` typed in lower case -
+SSIDs are case-sensitive, the module reported `errSSID: "vsp"`). The UI
+then showed `state`, `course`, `remainingTime 233 min`, `doorOpen` from
+the first frame: `03 35` is 3 h 53 min, read as hour and minute bytes.
+The course byte 05 shows as "Normal" from LG's vocabulary (§5.4b), the
+§5.3 guess "Eco" was wrong for that value.
+
+Flags at [11], observed: door open → `1A`, door closed → `12`: the door is
+bit 0x08, not 0x02. Bits 0x02 and 0x10 were set in both states and are
+not named yet. 0.1.5 (commit pending build) moves the door to 0x08.
+
+Frames seen on closing the door: `EC` with state 04 / course 00 at
+14:55:29, then `EC` with state 01 / course 05 / flags 12 at 14:55:37 -
+the appliance seems to pass through 04 briefly.
+
+Ten-minute mark: see the next entry. Open for tomorrow: whether the
+undeploy at `deployInterval` still happens with acks in place (and if so,
+try the power-cycle after registration), the names of flag bits 0x02 and
+0x10, the identification record's meaning, and `device_log`. On the
+phone: remember the home network name between runs.
