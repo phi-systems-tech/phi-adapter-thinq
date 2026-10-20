@@ -184,3 +184,44 @@ The phone side is in phi-magic-app; the spec is the only shared input
 (clean-room rule). Anything the transcript shows that contradicts §2 goes
 into `phi-core/docs/thinq-protocol.md` with a `[C]` mark, and the phone
 code follows the spec, not the other way round.
+
+## 6. What was done on the box, 2026-10-20 10:51 (pi5, 192.168.18.2)
+
+Built on taifun with sbuild (pipeline id `thinq-stack-1020`, extra packages
+sdk 0.23.0, libphi-runtime 0.2.1, transport-api 2.2.0, phi-chip-dev) and
+installed with `apt-get install --no-install-recommends ./*.deb`:
+
+- phi-adapter-sdk 0.23.0-1 (was 0.22.0; sdk-dev and sdk-qt-dev removed,
+  sdk-qt went to 0.6.0 from apt)
+- phi-core and phi-hostd 0.0~git202610191509.12ceee0-1 (was 96f04b1 of
+  10-15; phi-hostd is new on this box)
+- phi-adapter-thinq 0.1.2-1, phi-adapter-matter 0.0.18-1
+
+State after that: hostd up on `/run/phi/hostd.sock`, backend `thinq@main`
+installed and expected, adapter instance 5 "LG ThinQ main" running and on
+the broker at 127.0.0.1:1883 (anonymously, see below), hue/tuya/z2m as
+before. `/etc/default/phi-adapter-thinq` has `PHI_THINQ_HOST=pi5.lan`.
+
+**Not installed: phi-mosquitto.** Its 1.0-10 (built on taifun, `mosq1`)
+turns `allow_anonymous` off on 1883 and expects accounts from hostd, which
+rewrites passwd and acl from its own credentials on every change. This
+box's zigbee2mqtt (`/opt/zigbee2mqtt`, its own unit) and the z2m adapter log
+in with no account and are not under the host layer, so they would lose the
+broker. Instead, a script written for the box (the user runs it) mints the
+CA and the broker leaf exactly as `phi-mosquitto-tls` does, for `pi5`,
+`pi5.lan` and 192.168.18.2, adds `/etc/mosquitto/conf.d/phi-thinq.conf`
+(1883 explicit and anonymous, 8883 with `require_certificate`, phi's cipher
+list) and `/etc/dnsmasq.d/thinq.conf` (`dhcp-mac=set:thinq,14:7f:67:cf:d3:24`,
+`dhcp-option=tag:thinq,6,192.168.18.2`, `address=/pi5.lan/…`,
+`address=/common.lgthinq.com/…`, `comon.` too). The box is this LAN's DHCP
+server, so the per-MAC resolver is clean here. Bringing z2m under hostd
+(phi-z2m-runtime) is the way to phi-mosquitto proper; separate step.
+
+**Seen on the upgrade, not ours but yours:** phi-core 12ceee0 on the
+10-15 history database logs every 10 s
+`ChannelHistoryStore prepare history insert failed: ON CONFLICT clause does
+not match any PRIMARY KEY or UNIQUE constraint` - the insert in
+`channelhistorystore.cpp:293` wants `UNIQUE(channel_id, ts_ms)` and the old
+table has none; there is no migration. Channel history is not being written
+on the box until that is fixed. Also `Ignoring legacy global config
+/etc/phi/phi-core.ini`, harmless.
