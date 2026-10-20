@@ -701,6 +701,39 @@ void testDecodeDishwasherRejects()
     PHI_CHECK(!decodeDishwasherStatus({0x32}, dishwasherLayoutD0211()).has_value());
 }
 
+// The D0211's own frames, 2026-10-20: a state record right after the start
+// packet, and change records while it was switched off and on.
+void testDishwasherRealFrames()
+{
+    const DishwasherLayout &layout = dishwasherLayoutD0211();
+    const std::optional<Frame> state = decodeFrame(
+        bytesOf("AA2032EB001801000003350500033500001A000202010000000000000000C1BB"));
+    PHI_CHECK(state.has_value());
+    const std::optional<DishwasherStatus> s = decodeDishwasherStatus(state->contents, layout);
+    PHI_CHECK(s.has_value());
+    PHI_CHECK(s->state == 0x01);
+    PHI_CHECK(s->process == 0x00);
+    PHI_CHECK(s->course == 0x05);
+    PHI_CHECK(s->initialMinutes == 3 * 60 + 0x35);
+    PHI_CHECK(s->remainMinutes == 3 * 60 + 0x35);
+    PHI_CHECK(!s->changed);
+
+    // Switched off: previous block first (state 01), current last (04).
+    const std::optional<Frame> change = decodeFrame(bytesOf(
+        "AA3A32EC001801000003350500033500001A000202010000000000000000001804000003350000033500001A0002020100000000000000000FBB"));
+    PHI_CHECK(change.has_value());
+    const std::optional<DishwasherStatus> c = decodeDishwasherStatus(change->contents, layout);
+    PHI_CHECK(c.has_value());
+    PHI_CHECK(c->changed);
+    PHI_CHECK(c->state == 0x04);
+    PHI_CHECK(c->course == 0x00);
+
+    // A change record with only one block is not a change.
+    PHI_CHECK(!decodeDishwasherStatus(bytesOf("32 EC 00 18 01 00 00 03 35 05 00 03 35 00 00 1A 00 02 02 01 00 00 00 00 00 00 00 00"), layout).has_value());
+    // A truncated block is refused.
+    PHI_CHECK(!decodeDishwasherStatus(bytesOf("32 EB 00 18 01 00 00"), layout).has_value());
+}
+
 void testDishwasherVocabulary()
 {
     PHI_CHECK(dishwasherCourseName(5) == "NORMAL");
@@ -902,6 +935,7 @@ int main()
     testDecodeDishwasherState();
     testDecodeDishwasherChange();
     testDecodeDishwasherRejects();
+    testDishwasherRealFrames();
     testDishwasherVocabulary();
     testIsDishwasherKind();
 

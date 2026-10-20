@@ -30,10 +30,15 @@ std::string dishwasherErrorName(int value);
 struct DishwasherLayout {
     const char *name = "";
     bool verified = false;
+    /// Each block comes as `[flag][len]` + `len` bytes; the status offsets
+    /// below count from the first body byte. Observed on the D0211: `len`
+    /// is 0x18, and an `EC` record carries two such blocks, the previous
+    /// first and the current last.
+    bool headedBlocks = true;
     std::uint8_t classByte = 0x32;
-    std::size_t blockLength = 26;
+    std::size_t blockLength = 24;
     /// Which of the two `EC` blocks is the current one.
-    bool currentBlockFirst = true;
+    bool currentBlockFirst = false;
     int state = 0;
     int process = 1;
     int initialHour = 3;

@@ -90,21 +90,39 @@ std::optional<DishwasherStatus> decodeDishwasherStatus(const Bytes &contents, co
 
     Bytes block;
     DishwasherStatus s;
-    if (record == kRecordState) {
-        if (payload.size() < layout.blockLength)
+    if (record != kRecordState && record != kRecordChange)
+        return std::nullopt;
+
+    // The blocks of the record, bodies only. With headed blocks the length
+    // byte says where each body ends; without, they are laid end to end.
+    std::vector<Bytes> blocks;
+    if (layout.headedBlocks) {
+        std::size_t at = 0;
+        while (at + 2 <= payload.size()) {
+            const std::size_t len = payload[at + 1];
+            if (len == 0 || at + 2 + len > payload.size())
+                break;
+            blocks.emplace_back(payload.begin() + static_cast<std::ptrdiff_t>(at + 2),
+                                payload.begin() + static_cast<std::ptrdiff_t>(at + 2 + len));
+            at += 2 + len;
+        }
+    } else {
+        for (std::size_t at = 0; at + layout.blockLength <= payload.size(); at += layout.blockLength)
+            blocks.emplace_back(payload.begin() + static_cast<std::ptrdiff_t>(at),
+                                payload.begin() + static_cast<std::ptrdiff_t>(at + layout.blockLength));
+    }
+    if (blocks.empty())
+        return std::nullopt;
+    if (record == kRecordChange) {
+        if (blocks.size() < 2)
             return std::nullopt;
-        block.assign(payload.begin(), payload.begin() + static_cast<std::ptrdiff_t>(layout.blockLength));
-    } else if (record == kRecordChange) {
-        if (payload.size() < 2 * layout.blockLength)
-            return std::nullopt;
-        const auto first = payload.begin();
-        const auto second = first + static_cast<std::ptrdiff_t>(layout.blockLength);
-        const auto current = layout.currentBlockFirst ? first : second;
-        block.assign(current, current + static_cast<std::ptrdiff_t>(layout.blockLength));
+        block = layout.currentBlockFirst ? blocks.front() : blocks.back();
         s.changed = true;
     } else {
-        return std::nullopt;
+        block = blocks.front();
     }
+    if (block.size() < layout.blockLength)
+        return std::nullopt;
 
     s.state = blockByte(block, layout.state);
     s.process = blockByte(block, layout.process);

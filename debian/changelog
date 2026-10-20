@@ -1,3 +1,12 @@
+phi-adapter-thinq (0.1.4-1) trixie; urgency=medium
+
+  * Dishwasher status as the D0211 really sends it: each block is
+    [flag][len] + len bytes (len 0x18), a change record carries the
+    previous block first and the current one last. The §5.3 offsets then
+    hold: state, process, course 05 = Eco, times as hour and minute.
+
+ -- Marius Schumacher <marius.schumacher@phisys.com>  Tue, 20 Oct 2026 12:03:38 +0000
+
 phi-adapter-thinq (0.1.3-1) trixie; urgency=medium
 
   * Acknowledge the appliance's frames the way the cloud does (`ack`

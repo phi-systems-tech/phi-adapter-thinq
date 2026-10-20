@@ -487,3 +487,33 @@ behaviour; they are not documented protocol.
 Adapter 0.1.3-1 (commit f7a0eb6) does 1, 2, 3 and resets the round on
 `undeploy`. Built on taifun as pipeline `thinq-0.1.3`; being tried on the
 box next.
+
+## 11. With 0.1.3 on the box: the dishwasher streams [C]
+
+Fresh enrolment 13:58:48 with the acks, the time answer and the start
+packet in place:
+
+```
+13:58:48 preDeploy → completeProvisioning → completeProvisioning_ack
+13:58:48 packet  AA 0E F0 ED 11 21 01 00 00 00 18 00 B5 BB          (our start packet)
+13:58:48 device_packet AA 20 32 EB 00 18 01 00 00 03 35 05 00 03 35 00 00 1A 00 02 02 01 00 00 00 00 00 00 00 00 C1 BB
+13:58:48 device_log  {"device_log_key":"registration_time","device_log_data":{"list":[{"st":0,"n":"PERF_softap_start",...
+…        device_packet AA 37 32 31 … (identification)  → our ack AA 08 F0 00 31 04 82 BB
+…        device_packet AA 3A 32 EC [00 18 <24 B>] [00 18 <24 B>] …   on every change
+```
+
+The module stayed connected (no undeploy in the window) and sent six
+frames in four minutes while the appliance was switched off and on.
+
+**D0211 status layout, now observed:** `32 EB` carries one block, `32 EC`
+two; each block is `[flag 00][len 0x18]` + 24 bytes; in `EC` the previous
+block comes first, the current last. Counting from the first body byte,
+the §5.3 offsets fit: [0] state (01 while on, 04 after switching off),
+[1] process 00, [3]/[4] initial time `03 35`, [5] course 05 (Eco, as
+LG's vocabulary says), [7]/[8] remaining `03 35`, [11] flags 0x1A/0x12
+(bit 0x08 toggled on one of the user's actions - to pin down), [12]
+options 00, then `02 02 01` at [13..15]. Whether `35` is 53 minutes or
+BCD 35 is to be read off the display. Adapter 0.1.4-1 decodes this.
+
+Also new: `device_log` (`registration_time` with PERF_* timings) right
+after provisioning - logged, not acked, no harm seen.
