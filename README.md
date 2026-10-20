@@ -71,8 +71,10 @@ with these channels (ROADMAP M4).
   it on 8883 (routed allows it on 443), that is a capture question first.
 - Port 443 is also where nginx fronts the UI on an appliance; the two have
   not been reconciled.
-- The SoftAP step (§2) is the phi-magic app's (M8). Until it exists, a
-  module is re-pointed with LG's own app and the DNS override in place.
+- The SoftAP step (§2) is the phi-magic app's (M8) and is written there;
+  what the box has to have ready for it, and the order of the first run,
+  is `docs/HANDOVER-phi-magic-softap.md`. Until then a module is
+  re-pointed with LG's own app and the DNS override in place.
 - `req_timesync` goes unanswered; the module works without (§4.4).
 
 ## Enrolling an appliance, by hand
