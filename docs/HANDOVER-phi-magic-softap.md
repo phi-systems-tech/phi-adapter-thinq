@@ -335,3 +335,37 @@ Settled by this:
   the UI with channels is the next check (the box had no `device added`
   line at info level).
 - The module re-DHCPs once more about 30 s after `releaseDev`'s join; harmless.
+
+## 9. After enrolment: what the appliance does and does not do [C]
+
+- The module stays on the broker (keep-alive 60) but **publishes nothing
+  on its own**, switched on or off, door or not. The appliance's Wi-Fi LED
+  stays dark and, switched on, it does not "connect by itself" as far as
+  the panel shows - the module is connected all the while. So the main
+  board does not treat the module as registered. Something LG's cloud does
+  after `completeProvisioning_ack` is missing on our side; the spec's §7
+  items 6 (`req_timesync` answer) and the `deploy` cycle are the
+  candidates. A capture of LG's side (bridge) is what settles it.
+- After a power-cycle at 13:09 the module came back by itself with the
+  saved network, asked `/route`, **posted a new CSR again** (a certificate
+  per boot, apparently), connected, sent `preDeploy` again (not `deploy`),
+  got `completeProvisioning`, acked.
+- One frame did arrive, when the appliance was switched on at ~13:11:
+
+  ```
+  $aws/rules/clip_http_action_rule/clip/devices/<uuid>/message
+  {"mid":272002,"did":"<uuid>","kind":"D0211","cmd":"device_packet","rssi":-71,
+   "fs":"idle","br":4800,"per":5,"data":"AA37323102015341413431323633393132000011C4
+   00008000000000000253414134313236313031300000FFA7FFFC00000000000041BB","type":1}
+  ```
+
+  55 bytes, `AA 37` length ok, checksum `41` verifies with §5.1's rule
+  (sum mod 256 xor 0x55). Class byte **`32`** as the §5.3 hypothesis
+  says. Record type `31` (not `EB`/`EC`): `02 01` then the ASCII
+  `SAA41263912`, then `00 00 11 C4 00 00 80 00 00 00 00 00 02`, the ASCII
+  `SAA41261010`, `00 00 FF A7 FF FC 00 00 00 00 00 00`. Reads as an
+  identification record (two firmware ids) sent at power-on, not a status
+  block. No `32 EB` status followed. `br: 4800` is the UART rate, `per: 5`
+  unknown.
+- The topic the module publishes on is the `publication.message` we gave
+  it in `completeProvisioning` (`$aws/rules/clip_http_action_rule/clip/devices/<uuid>/message`).
