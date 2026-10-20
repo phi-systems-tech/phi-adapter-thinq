@@ -288,3 +288,50 @@ WiFi/ThinQ registration (manual), after which `getDeviceInfo` should say
 Also seen: `errorCode: "nS"` on the second `getDeviceInfo`; `homeNetwork`
 in the `setApInfo` answer confirms the module scans and reports channel
 and security of the SSID it was given.
+
+## 8. Enrolled, 2026-10-20 12:52 [C]
+
+What freed the module: deleting the dishwasher in LG's own app (manual p.56,
+"Supprimer le produit"), with the DNS override off for a moment so the
+module could reach LG's cloud for that. Afterwards `getDeviceInfo` said
+`isReg: N`, `errSSID: ""`, same `modemVer clip_hna_v1.9.230` (the app
+also ran a firmware update first; the module version did not change). The
+sales model is **DB365TXS** (sticker QR `http://thinq.link/QR1?s=<serial>&m=DB365TXS.AASQEES`,
+which the app now recognises as an LG sticker).
+
+Then the full run from the phone, override back on, box `pi5.lan`:
+
+```
+12:51:35 DHCPACK 192.168.18.11, tags known,thinq
+12:51:37 query[A] common.lgthinq.com -> 192.168.18.2
+12:51:38 GET /route -> 200                      (TLSv1.2, ECDHE-RSA-AES256-SHA)
+12:51:40 query[A] pi5.lan -> 192.168.18.2
+12:51:41 TLS handshake failed: tlsv1 alert unknown ca   (the module, before it had our anchor)
+12:51:43 GET /route/certificate -> 200
+12:51:44 GET /route/certificate?name=common-server -> 200
+12:51:58 no HTTP request (0 bytes)              (one idle connection)
+12:52:05 issued a certificate to c5c8f38b-… (/CN=*.clip.com/O=LGE/C=KR)
+12:52:05 POST /device/c5c8f38b-…/certificate -> 200
+12:52:07 8883: client alert unknown ca           (still before the aws-iot anchor)
+12:52:12 GET /route/certificate -> 200
+12:52:18 GET /route/certificate?name=aws-iot -> 200
+12:52:18 8883: connection (no error logged)
+12:52:35 DHCP again, 12:52:40 query pi5.lan, 12:52:43 GET /route -> 200
+12:52:44 8883: New client connected … as c5c8f38b-15c6-19ff-bc00-147f67cfd324 (p1, c1, k60, u'*.clip.com')
+         adapter: new appliance c5c8f38b-… (D0211); sent preDeploy; answered completeProvisioning; acknowledged provisioning
+```
+
+Settled by this:
+- The module asks `/route` first, always, then the two anchors, then
+  posts its CSR (`CN=*.clip.com, O=LGE, C=KR`) - §3.2/§3.3 as the notes had
+  them, in that order, with `common-server` before the CSR and `aws-iot`
+  after. HTTPS to routed is TLS 1.2 `ECDHE-RSA-AES256-SHA` throughout.
+- MQTT: protocol level 3.1 (`p1`), clean session, keep-alive 60, username
+  from the certificate CN `*.clip.com`, client id = uuid. The `%u` ACL
+  patterns of the kind descriptor would therefore match `*.clip.com`, not
+  the uuid - worth a look before phi-mosquitto's ACL goes live.
+- `preDeploy` → `completeProvisioning` → ack works with the 0.1.2 adapter
+  as built. The device is known to the adapter; whether it is visible in
+  the UI with channels is the next check (the box had no `device added`
+  line at info level).
+- The module re-DHCPs once more about 30 s after `releaseDev`'s join; harmless.
