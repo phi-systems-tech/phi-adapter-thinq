@@ -1,3 +1,12 @@
+phi-adapter-thinq (0.1.6-1) trixie; urgency=medium
+
+  * Broker ACL: appliance topics are matched by client id (%c), not by
+    user name. On the certificate listener the user name is the
+    certificate's CN, which LG's modules all request as `*.clip.com`;
+    the client id is the appliance's uuid.
+
+ -- Marius Schumacher <marius.schumacher@phisys.com>  Tue, 20 Oct 2026 17:02:24 +0000
+
 phi-adapter-thinq (0.1.5-1) trixie; urgency=medium
 
   * D0211: the door is flag bit 0x08, seen opening and closing; 0x02 and

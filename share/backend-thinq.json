@@ -9,10 +9,10 @@
   },
   "brokerTopics": ["clip/#", "$aws/#", "lime/#"],
   "brokerPatterns": [
-    "clip/provisioning/devices/%u",
-    "clip/provisioning/devices/%u/#",
-    "$aws/rules/+/clip/devices/%u/#",
-    "$aws/rules/+/clip/provisioning/devices/%u",
-    "lime/devices/%u"
+    "clip/provisioning/devices/%c",
+    "clip/provisioning/devices/%c/#",
+    "$aws/rules/+/clip/devices/%c/#",
+    "$aws/rules/+/clip/provisioning/devices/%c",
+    "lime/devices/%c"
   ]
 }

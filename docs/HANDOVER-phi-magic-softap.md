@@ -329,7 +329,8 @@ Settled by this:
 - MQTT: protocol level 3.1 (`p1`), clean session, keep-alive 60, username
   from the certificate CN `*.clip.com`, client id = uuid. The `%u` ACL
   patterns of the kind descriptor would therefore match `*.clip.com`, not
-  the uuid - worth a look before phi-mosquitto's ACL goes live.
+  the uuid - worth a look before phi-mosquitto's ACL goes live. (0.1.6:
+  the patterns use `%c`, the client id.)
 - `preDeploy` → `completeProvisioning` → ack works with the 0.1.2 adapter
   as built. The device is known to the adapter; whether it is visible in
   the UI with channels is the next check (the box had no `device added`
