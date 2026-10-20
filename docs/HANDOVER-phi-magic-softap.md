@@ -225,3 +225,38 @@ not match any PRIMARY KEY or UNIQUE constraint` - the insert in
 table has none; there is no migration. Channel history is not being written
 on the box until that is fixed. Also `Ignoring legacy global config
 /etc/phi/phi-core.ini`, harmless.
+
+## 7. Full run, dishwasher D0211, 2026-10-20 11:21 [C]
+
+Box prepared as in §6 (hand-made 8883 listener, routed on 443 for
+`pi5.lan`, per-MAC resolver). Phone: `VSP` (2.4 GHz) as the home network,
+`pi5.lan` as the box, "only ask" off. Every step answered `result 000`:
+
+- `setCertInfo` → `{"protocolVer":"4.9","subErrorCode":"NONE","result":"000"}`
+- `setApInfo` → `{"result":"000","rssi":-68,"protocolVer":"4.9","subErrorCode":"NONE",
+  "homeNetwork":{"oui":"3c64cf","freq":2462,"security":"WPA2_PSK","encryption":"AES","ssid":"VSP"},
+  "modemInfo":{"macReturnValue":{"flag":-1,"reason":-1,"sigscore":0,"rssi":0,"per":0}},
+  "sysInfo":{"bootId":"…","resetReason":"POWER_ON","mid":47468}}` - the module
+  scans for the SSID and reports the AP it found, channel 11 (2462 MHz).
+- `releaseDev` → `{"protocolVer":"4.9","subErrorCode":"NONE","result":"000"}`
+- Second `getDeviceInfo` of the day: `errSSID` had become `VSP`, and an
+  `errorCode":"nS"` appeared (first run had none). Meaning open.
+
+Then, on the box (dnsmasq log, tcpdump):
+
+- 11:21:59 DHCPDISCOVER/ACK from `14:7f:67:cf:d3:24` with tags
+  `known, thinq`: the module is on the home network, 192.168.18.11, and got
+  the box as DNS. Immediately `query[A] common.lgthinq.com` → 192.168.18.2.
+  **It never asks for `pi5.lan`: the `apiServer`/`mqttServer` given in
+  `getDeviceInfo` do not replace `/route` on this firmware (§7's question,
+  answered for QCA4010 / clip_hna_v1.9.230).** Only the `common.` spelling
+  was asked.
+- After the DNS answer: **no packet at all** to 443 or anywhere, then a
+  fresh DHCPDISCOVER 27 s later and the same again, with growing gaps
+  (11:22:26, 11:29:10, 11:29:52, 11:31:19, 11:34:54). The backend saw no
+  request.
+- Suspected cause, from §6: dnsmasq answers `address=` records with TTL 0,
+  and "the module ignores a TTL of 0 [I]". `local-ttl=60` was added to
+  `/etc/dnsmasq.d/thinq.conf` at 11:37. Whether that frees the loop is the
+  next thing the log shows; if not, a power-cycle of the appliance (§2.3)
+  is the next step, then a capture of what it does after the DNS answer.
