@@ -718,8 +718,12 @@ void testDishwasherRealFrames()
     const std::optional<Frame> state = decodeFrame(
         bytesOf("AA2032EB001801000003350500033500001A000202010000000000000000C1BB"));
     PHI_CHECK(state.has_value());
+    if (!state)
+        return;
     const std::optional<DishwasherStatus> s = decodeDishwasherStatus(state->contents, layout);
     PHI_CHECK(s.has_value());
+    if (!s)
+        return;
     PHI_CHECK(s->state == 0x01);
     PHI_CHECK(s->process == 0x00);
     PHI_CHECK(s->course == 0x05);
@@ -729,9 +733,10 @@ void testDishwasherRealFrames()
     PHI_CHECK(!s->changed);
 
     // The door closed: flags 12, the current (last) block.
-    const std::optional<Frame> closed = decodeFrame(bytesOf(
-        "AA3A32EC001804000003350000033500001A00020201000000000000000000180100000335050003350000120002020100000000000000001CBB"));
+    const std::optional<Frame> closed = decodeFrame(bytesOf("AA3A32EC001804000003350000033500001A000202010000000000000000001801000003350500033500001200020201000000000000000007BB"));
     PHI_CHECK(closed.has_value());
+    if (!closed)
+        return;
     const std::optional<DishwasherStatus> d = decodeDishwasherStatus(closed->contents, layout);
     PHI_CHECK(d.has_value());
     PHI_CHECK(d && !d->doorOpen && d->state == 0x01);
@@ -740,6 +745,8 @@ void testDishwasherRealFrames()
     const std::optional<Frame> change = decodeFrame(bytesOf(
         "AA3A32EC001801000003350500033500001A000202010000000000000000001804000003350000033500001A0002020100000000000000000FBB"));
     PHI_CHECK(change.has_value());
+    if (!change)
+        return;
     const std::optional<DishwasherStatus> c = decodeDishwasherStatus(change->contents, layout);
     PHI_CHECK(c.has_value());
     PHI_CHECK(c->changed);
