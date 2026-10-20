@@ -442,3 +442,53 @@ Third enrolment, 13:34, listener running before the module came up
   and the CSR - nothing was refused). The panel's Wi-Fi LED stays dark the
   whole time, which says the main board is told "not registered" by the
   module.
+
+## 10. What LG's cloud does that we did not - from anszom/rethink, 2026-10-20
+
+The user lifted the "no third-party source" rule for this question
+(reading is fine, copying is not). `phi-core/docs/thinq-protocol.md` line
+16 still states the old rule and should be amended: facts below come from
+reading rethink's source (`cloud/devices/aabb_device.ts`,
+`cloud/thinq2/device.ts`, `cloud/thinq2/provisioning.ts`,
+`cloud/devices/D0211.ts`) and are written in our words; mark them `[S]`.
+
+1. **Delivery acks.** The cloud acknowledges every frame the appliance
+   sends except types `00` (the appliance's own acks), `C3` (heartbeat),
+   `EB`/`EC` (bare status records). The ack is a frame with contents
+   `F0 00 <type> 04`, and for an envelope (`<class> 0A …`) additionally the
+   envelope's 16-bit sequence number (contents bytes 5..6); envelopes
+   shorter than 13 bytes are ignored. It is published under its **own MQTT
+   command `ack`** (`{"did","mid","cmd":"ack","type":1,"data":"<hex>"}`),
+   not `packet`. A comment there says: unacknowledged, some appliances
+   repeat each frame up to ten times and "the content sync never
+   completes"; `00` in place of `04`, or `packet` in place of `ack`, stops
+   the retransmits but leaves the content sync re-running. **That is our
+   symptom**: the D0211's identification record (type `31`) repeated, then
+   `undeploy`.
+2. **`req_timesync` is answered**: `{"cmd":"resp_timesync","type":1,"did","mid",
+   "data":"<base64 of 7 bytes>"}` with UTC year mod 100, month (0-based),
+   day, hours, minutes, seconds, weekday (0 = Sunday). Our module has not
+   sent `req_timesync` yet, but the answer is cheap.
+3. **Dishwasher start packet.** For the D0211 the bridge sends, right when
+   the device is created at `preDeploy`, one command: contents
+   `F0 ED 11 21 01 00 00 00 18 00` as a `packet`. Meaning undocumented.
+   The other dishwasher there (H11) sends nothing at start.
+4. `completeProvisioning` shape matches ours (did, mid, cmd, type 0, data
+   with result 0, host "message", appInfo.publication, provisioningType
+   echoing the request, deployInterval 600) - except rethink hands out
+   `clip/message/devices/<did>` and `clip/provisioning/devices/<did>`
+   without the `$aws/rules/...` prefix and strips the prefix on the way
+   in. Ours keeps LG's prefixes; the module publishes to them fine.
+5. Nothing is sent after `completeProvisioning_ack`; the ack is a no-op
+   there too. `undeploy` is not handled there. No HTTPS endpoint beyond
+   `/route`, `/route/certificate`, `POST /device/:id/certificate`.
+6. rethink's wiki page "enrolling-newer-firmware" describes exactly our
+   loop (device sits in "connecting…", streams for a few minutes, then
+   undeploys and re-registers) and says a hard power-cycle fixed it.
+7. D0211 status there: `EB`/`EC` records of `[flag][0x18]` + 24-byte body,
+   class byte `32`, `32 D8 n` transition frame, about one update per
+   minute. To compare with §5.3 once frames flow.
+
+Adapter 0.1.3-1 (commit f7a0eb6) does 1, 2, 3 and resets the round on
+`undeploy`. Built on taifun as pipeline `thinq-0.1.3`; being tried on the
+box next.
