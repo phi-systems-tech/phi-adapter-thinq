@@ -25,12 +25,8 @@ constexpr const char kIconSvg[] =
 v1::AdapterConfigField field(const char *key, v1::AdapterConfigFieldType type, const char *label,
                              const char *description, v1::ScalarValue defaultValue = {})
 {
-    v1::AdapterConfigField out;
-    out.key = key;
-    out.type = type;
-    out.label = label;
-    out.description = description;
-    out.defaultValue = std::move(defaultValue);
+    v1::AdapterConfigField out(key, type, label);
+    out.setDescription(description).setDefaultValue(std::move(defaultValue));
     return out;
 }
 
@@ -40,27 +36,27 @@ v1::AdapterConfigSection section()
     using Type = v1::AdapterConfigFieldType;
     using Flag = v1::AdapterConfigFieldFlag;
     v1::AdapterConfigSection out;
-    out.title = "LG ThinQ appliances";
-    out.description = "Appliances provisioned onto the box's own broker announce themselves here; "
-                      "nothing is entered per appliance.";
-    out.layout.columns = 2;
+    out.setTitle("LG ThinQ appliances")
+        .setDescription("Appliances provisioned onto the box's own broker announce themselves here; "
+                        "nothing is entered per appliance.");
+    out.layout().setColumns(2);
 
     v1::AdapterConfigField host = field("brokerHost", Type::Hostname, "Broker",
                                         "The MQTT broker the appliances were provisioned onto; the box's own.",
                                         v1::Utf8String(kDefaultBrokerHost));
     v1::AdapterConfigField port = field("brokerPort", Type::Port, "Port", "The plain listener, local only.",
                                         std::int64_t{kDefaultBrokerPort});
-    port.layout.controlWidth = v1::AdapterConfigSize::Narrow;
+    port.layout().setControlWidth(v1::AdapterConfigSize::Narrow);
     v1::AdapterConfigField username = field("username", Type::String, "Username",
                                             "The adapter's account on the broker.");
     v1::AdapterConfigField password = field("password", Type::Password, "Password", "");
-    password.flags = Flag::Secret;
+    password.setFlags(Flag::Secret);
     v1::AdapterConfigField retry = field("retryIntervalMs", Type::Integer, "Retry interval",
                                          "Reconnect interval while the broker is unreachable.",
                                          std::int64_t{kDefaultRetryIntervalMs});
-    retry.layout.controlWidth = v1::AdapterConfigSize::Narrow;
+    retry.layout().setControlWidth(v1::AdapterConfigSize::Narrow);
 
-    out.fields = {host, port, username, password, retry};
+    out.setFields({host, port, username, password, retry});
     return out;
 }
 
@@ -84,16 +80,15 @@ v1::Utf8String iconSvg()
 v1::AdapterCapabilities capabilities()
 {
     v1::AdapterCapabilities caps;
-    caps.required = v1::AdapterRequirement::ManualConfirm | v1::AdapterRequirement::UsesRetryInterval;
-    caps.optional = v1::AdapterRequirement::Host | v1::AdapterRequirement::Port;
+    caps.setRequired(v1::AdapterRequirement::ManualConfirm | v1::AdapterRequirement::UsesRetryInterval)
+        .setOptional(v1::AdapterRequirement::Host | v1::AdapterRequirement::Port);
     return caps;
 }
 
 v1::AdapterConfigSchema configSchema()
 {
     v1::AdapterConfigSchema schema;
-    schema.factory = section();
-    schema.instance = section();
+    schema.setFactory(section()).setInstance(section());
     return schema;
 }
 

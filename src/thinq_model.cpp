@@ -18,11 +18,7 @@ v1::Channel channel(const char *id, const char *name, v1::ChannelKind kind, v1::
                     v1::ChannelFlags flags = kReadReport)
 {
     v1::Channel out;
-    out.externalId = id;
-    out.name = name;
-    out.kind = kind;
-    out.dataType = type;
-    out.flags = flags;
+    out.setExternalId(id).setName(name).setKind(kind).setDataType(type).setFlags(flags);
     return out;
 }
 
@@ -34,10 +30,7 @@ v1::Channel boolChannel(const char *id, const char *name)
 v1::Channel minutesChannel(const char *id, const char *name)
 {
     v1::Channel out = channel(id, name, v1::ChannelKind::Duration, v1::ChannelDataType::Int);
-    out.unit = "min";
-    out.minValue = 0;
-    out.maxValue = 30 * 60;
-    out.stepValue = 1;
+    out.setUnit("min").setRange(0, 30 * 60, 1);
     return out;
 }
 
@@ -49,7 +42,7 @@ v1::Channel enumChannel(const char *id, const char *name, int first, int last, N
     for (int value = first; value <= last; ++value) {
         const std::string label = nameOf(value);
         if (label != "UNKNOWN")
-            out.choices.push_back({label, label});
+            out.addChoice(label, label);
     }
     return out;
 }
@@ -60,9 +53,7 @@ void appendCommon(v1::ChannelList &channels)
                                v1::ChannelDataType::Enum));
     v1::Channel signal = channel(kChannelSignal, "Wi-Fi signal", v1::ChannelKind::SignalStrength,
                                  v1::ChannelDataType::Int);
-    signal.unit = "dBm";
-    signal.minValue = -100;
-    signal.maxValue = 0;
+    signal.setUnit("dBm").setRange(-100, 0);
     channels.push_back(std::move(signal));
     channels.push_back(channel(kChannelLastFrame, "Last frame", v1::ChannelKind::Unknown,
                                v1::ChannelDataType::String));
@@ -79,8 +70,8 @@ void appendWasher(v1::ChannelList &channels, bool decoderVerified)
     v1::Channel operation = channel(kChannelOperation, "Operation", v1::ChannelKind::Unknown,
                                     v1::ChannelDataType::String, kReadWriteReport);
     if (decoderVerified)
-        operation.choices.push_back({kOperationStart, "Start"});
-    operation.choices.push_back({kOperationPause, "Pause"});
+        operation.addChoice(kOperationStart, "Start");
+    operation.addChoice(kOperationPause, "Pause");
     channels.push_back(std::move(operation));
 
     channels.push_back(enumChannel(kChannelState, "State", 0, 18, washerStateName));
@@ -90,10 +81,7 @@ void appendWasher(v1::ChannelList &channels, bool decoderVerified)
 
     v1::Channel delayEnd = channel(kChannelDelayEnd, "Delayed end", v1::ChannelKind::Unknown,
                                    v1::ChannelDataType::Int, decoderVerified ? kReadWriteReport : kReadReport);
-    delayEnd.unit = "h";
-    delayEnd.minValue = 0;
-    delayEnd.maxValue = 19;
-    delayEnd.stepValue = 1;
+    delayEnd.setUnit("h").setRange(0, 19, 1);
     channels.push_back(std::move(delayEnd));
 
     channels.push_back(enumChannel(kChannelSpin, "Spin", 0, 255, washerSpinName));
@@ -105,15 +93,12 @@ void appendWasher(v1::ChannelList &channels, bool decoderVerified)
 
     v1::Channel cycles = channel(kChannelCycleCount, "Cycle count", v1::ChannelKind::Unknown,
                                  v1::ChannelDataType::Int);
-    cycles.minValue = 0;
-    cycles.maxValue = 255;
+    cycles.setRange(0, 255);
     channels.push_back(std::move(cycles));
 
     v1::Channel energy = channel(kChannelEnergy, "Cycle energy", v1::ChannelKind::Unknown,
                                  v1::ChannelDataType::Int);
-    energy.unit = "Wh";
-    energy.minValue = 0;
-    energy.maxValue = 65535;
+    energy.setUnit("Wh").setRange(0, 65535);
     channels.push_back(std::move(energy));
 }
 
@@ -175,12 +160,12 @@ v1::Device buildDevice(const std::string &uuid, const std::string &name, const s
                        const std::string &firmware)
 {
     v1::Device device;
-    device.externalId = uuid;
-    device.deviceClass = v1::DeviceClass::Sensor;
-    device.name = name;
-    device.manufacturer = "LG Electronics";
-    device.model = model;
-    device.firmware = firmware;
+    device.setExternalId(uuid)
+        .setDeviceClass(v1::DeviceClass::Sensor)
+        .setName(name)
+        .setManufacturer("LG Electronics")
+        .setModel(model)
+        .setFirmware(firmware);
     return device;
 }
 

@@ -176,9 +176,9 @@ protected:
     {
         if (!m_running)
             return;
-        m_info = request.adapter;
-        const Json meta = parseObject(request.adapter.metaJson);
-        const ThinqSettings next = settingsFromAdapter(request.adapter, meta);
+        m_info = request.adapter();
+        const Json meta = parseObject(request.adapter().metaJson());
+        const ThinqSettings next = settingsFromAdapter(request.adapter(), meta);
         const bool brokerChanged = !m_configured || !next.sameBroker(m_settings);
         m_settings = next;
 
@@ -197,55 +197,55 @@ protected:
 
     void onChannelInvoke(const sdk::ChannelInvokeRequest &request) override
     {
-        const auto it = m_appliances.find(request.deviceExternalId);
+        const auto it = m_appliances.find(request.deviceExternalId());
         if (it == m_appliances.end()) {
-            answer(request.cmdId, v1::CmdStatus::NotSupported, "Unknown appliance");
+            answer(request.cmdId(), v1::CmdStatus::NotSupported, "Unknown appliance");
             return;
         }
         Appliance &appliance = it->second;
         if (appliance.family != Family::Washer) {
-            answer(request.cmdId, v1::CmdStatus::NotSupported, "This appliance takes no commands");
+            answer(request.cmdId(), v1::CmdStatus::NotSupported, "This appliance takes no commands");
             return;
         }
-        const std::string &channel = request.channelExternalId;
+        const std::string &channel = request.channelExternalId();
         if (channel == kChannelDelayEnd) {
-            const std::optional<std::int64_t> hours = scalarToInt(request.value);
+            const std::optional<std::int64_t> hours = scalarToInt(request.value());
             if (!hours || *hours < 0 || *hours > 19) {
-                answer(request.cmdId, v1::CmdStatus::InvalidArgument, "Delayed end takes 0 to 19 hours");
+                answer(request.cmdId(), v1::CmdStatus::InvalidArgument, "Delayed end takes 0 to 19 hours");
                 return;
             }
             appliance.delayHours = static_cast<int>(*hours);
             emitChannel(appliance, kChannelDelayEnd, static_cast<std::int64_t>(appliance.delayHours));
-            answer(request.cmdId, v1::CmdStatus::Success, {});
+            answer(request.cmdId(), v1::CmdStatus::Success, {});
             return;
         }
         if (!m_mqtt || !m_mqtt->connected() || !appliance.online) {
-            answer(request.cmdId, v1::CmdStatus::TemporarilyOffline, "The appliance is not reporting");
+            answer(request.cmdId(), v1::CmdStatus::TemporarilyOffline, "The appliance is not reporting");
             return;
         }
         if (channel == kChannelPower) {
-            const std::optional<bool> on = scalarToBool(request.value);
+            const std::optional<bool> on = scalarToBool(request.value());
             if (!on) {
-                answer(request.cmdId, v1::CmdStatus::InvalidArgument, "Power takes on or off");
+                answer(request.cmdId(), v1::CmdStatus::InvalidArgument, "Power takes on or off");
                 return;
             }
-            setPower(appliance, request.cmdId, *on);
+            setPower(appliance, request.cmdId(), *on);
             return;
         }
         if (channel == kChannelOperation) {
-            const std::string op = str::toUpper(scalarToString(request.value));
+            const std::string op = str::toUpper(scalarToString(request.value()));
             if (op == kOperationPause) {
-                sendCommand(appliance, request.cmdId, washerPause(), "pause");
+                sendCommand(appliance, request.cmdId(), washerPause(), "pause");
                 return;
             }
             if (op == kOperationStart) {
-                startProgramme(appliance, request.cmdId);
+                startProgramme(appliance, request.cmdId());
                 return;
             }
-            answer(request.cmdId, v1::CmdStatus::InvalidArgument, "Operation takes START or PAUSE");
+            answer(request.cmdId(), v1::CmdStatus::InvalidArgument, "Operation takes START or PAUSE");
             return;
         }
-        answer(request.cmdId, v1::CmdStatus::NotSupported, "Channel is read-only");
+        answer(request.cmdId(), v1::CmdStatus::NotSupported, "Channel is read-only");
     }
 
 private:
@@ -260,7 +260,7 @@ private:
         setConnected(false);
 
         MqttSettings mqtt;
-        mqtt.clientId = "phi-thinq-" + std::string(m_info.externalId.empty() ? "1" : m_info.externalId);
+        mqtt.clientId = "phi-thinq-" + std::string(m_info.externalId().empty() ? "1" : m_info.externalId());
         mqtt.host = m_settings.brokerHost;
         mqtt.port = m_settings.brokerPort;
         mqtt.username = m_settings.username;
@@ -703,11 +703,8 @@ private:
 
     void answer(v1::CmdId cmdId, v1::CmdStatus status, const std::string &error)
     {
-        v1::CmdResponse response;
-        response.id = cmdId;
-        response.status = status;
-        response.error = error;
-        response.tsMs = nowMs();
+        const v1::CmdResponse response =
+            v1::CmdResponse().setId(cmdId).setStatus(status).setError(error).setTsMs(nowMs());
         v1::Utf8String sendError;
         if (!sendResult(response, &sendError))
             log(sdk::LogLevel::Error, sdk::LogCategory::Internal, "failed to send a command result: %1",

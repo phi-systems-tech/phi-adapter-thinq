@@ -30,7 +30,7 @@ Bytes bytesOf(const char *hex)
 const v1::Channel *findChannel(const v1::ChannelList &channels, const char *id)
 {
     for (const v1::Channel &c : channels) {
-        if (c.externalId == id)
+        if (c.externalId() == id)
             return &c;
     }
     return nullptr;
@@ -38,13 +38,13 @@ const v1::Channel *findChannel(const v1::ChannelList &channels, const char *id)
 
 bool hasChoice(const v1::Channel &channel, const char *value)
 {
-    return std::any_of(channel.choices.begin(), channel.choices.end(),
-                       [&](const v1::AdapterConfigOption &o) { return o.value == value; });
+    return std::any_of(channel.choices().begin(), channel.choices().end(),
+                       [&](const v1::AdapterConfigOption &o) { return o.value() == value; });
 }
 
 bool writable(const v1::Channel &channel)
 {
-    return v1::hasFlag(channel.flags, v1::ChannelFlag::Writable);
+    return v1::hasFlag(channel.flags(), v1::ChannelFlag::Writable);
 }
 
 /// A whole washer status frame of `length` bytes with a valid short checksum;
@@ -845,7 +845,7 @@ void testDishwasherChannels()
     PHI_CHECK(findChannel(channels, kChannelPower) == nullptr);
     PHI_CHECK(findChannel(channels, kChannelOperation) == nullptr);
     for (const v1::Channel &c : channels)
-        PHI_CHECK_MSG(!writable(c), "%s is writable", c.externalId.c_str());
+        PHI_CHECK_MSG(!writable(c), "%s is writable", c.externalId().c_str());
 }
 
 void testUnknownFamilyHasOnlyCommonChannels()
@@ -859,12 +859,12 @@ void testUnknownFamilyHasOnlyCommonChannels()
 void testBuildDevice()
 {
     const v1::Device d = buildDevice("u-1", "Washer", "F_V8_F___W.B_2QEUK", "690409");
-    PHI_CHECK(d.externalId == "u-1");
-    PHI_CHECK(d.deviceClass == v1::DeviceClass::Sensor);
-    PHI_CHECK(d.manufacturer == "LG Electronics");
-    PHI_CHECK(d.name == "Washer");
-    PHI_CHECK(d.model == "F_V8_F___W.B_2QEUK");
-    PHI_CHECK(d.firmware == "690409");
+    PHI_CHECK(d.externalId() == "u-1");
+    PHI_CHECK(d.deviceClass() == v1::DeviceClass::Sensor);
+    PHI_CHECK(d.manufacturer() == "LG Electronics");
+    PHI_CHECK(d.name() == "Washer");
+    PHI_CHECK(d.model() == "F_V8_F___W.B_2QEUK");
+    PHI_CHECK(d.firmware() == "690409");
 }
 
 // ---- settings --------------------------------------------------------------
@@ -897,8 +897,7 @@ void testSettingsAdapterFieldsAndBadValues()
     // The adapter's own fields are the fallback; meta wins when it has a
     // value, and an out-of-range port or a too short retry falls back.
     v1::Adapter adapter;
-    adapter.host = " broker.lan ";
-    adapter.port = 1885;
+    adapter.setHost(" broker.lan ").setPort(1885);
     const ThinqSettings a = settingsFromAdapter(adapter, Json::object());
     PHI_CHECK(a.brokerHost == "broker.lan");
     PHI_CHECK(a.brokerPort == 1885);
