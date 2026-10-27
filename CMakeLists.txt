@@ -12,24 +12,8 @@ find_package(nlohmann_json 3.11 REQUIRED)
 # package's own: the SDK keeps its OpenSSL private.
 find_package(OpenSSL REQUIRED)
 
-# MQTT from libmosquitto driven by the SDK's loop, as in phi-adapter-z2m.
-find_package(PkgConfig)
-if(PkgConfig_FOUND)
-    pkg_check_modules(MOSQUITTO IMPORTED_TARGET libmosquitto)
-endif()
-if(TARGET PkgConfig::MOSQUITTO)
-    add_library(mosquitto::mosquitto ALIAS PkgConfig::MOSQUITTO)
-else()
-    find_path(MOSQUITTO_INCLUDE_DIR mosquitto.h)
-    find_library(MOSQUITTO_LIBRARY mosquitto)
-    if(NOT MOSQUITTO_INCLUDE_DIR OR NOT MOSQUITTO_LIBRARY)
-        message(FATAL_ERROR "libmosquitto not found. Install libmosquitto-dev.")
-    endif()
-    add_library(mosquitto::mosquitto UNKNOWN IMPORTED)
-    set_target_properties(mosquitto::mosquitto PROPERTIES
-        IMPORTED_LOCATION "${MOSQUITTO_LIBRARY}"
-        INTERFACE_INCLUDE_DIRECTORIES "${MOSQUITTO_INCLUDE_DIR}")
-endif()
+# MQTT from phi-runtime-mqtt, on the SDK's loop.
+find_package(phi-runtime-mqtt CONFIG REQUIRED)
 
 set(PHI_ADAPTER_SDK_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../phi-adapter-sdk" CACHE PATH
     "Path to local phi-adapter-sdk checkout")
@@ -68,9 +52,8 @@ target_link_libraries(phi_adapter_thinq_core
 add_executable(phi_adapter_thinq_ipc
     src/main.cpp
     src/thinq_instance.cpp
-    src/thinq_mqtt.cpp
 )
-target_link_libraries(phi_adapter_thinq_ipc PRIVATE phi_adapter_thinq_core mosquitto::mosquitto)
+target_link_libraries(phi_adapter_thinq_ipc PRIVATE phi_adapter_thinq_core phi::runtime_mqtt)
 set_target_properties(phi_adapter_thinq_ipc PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins/adapters")
 

@@ -2,7 +2,7 @@ Source: phi-adapter-thinq
 Section: net
 Priority: optional
 Maintainer: Marius Schumacher <marius.schumacher@phisys.com>
-Build-Depends: debhelper-compat (= 13), cmake, ninja-build, pkg-config, nlohmann-json3-dev, libssl-dev, libmosquitto-dev, phi-adapter-sdk-dev (>= 0.29.0)
+Build-Depends: debhelper-compat (= 13), cmake, ninja-build, pkg-config, nlohmann-json3-dev, libssl-dev, libphi-runtime-mqtt-dev, phi-adapter-sdk-dev (>= 0.29.0)
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://phisys.com

@@ -14,7 +14,7 @@
 #include "thinq_frame.h"
 #include "thinq_json.h"
 #include "thinq_model.h"
-#include "thinq_mqtt.h"
+#include "phi/runtime/mqtt/client.h"
 #include "thinq_settings.h"
 #include "thinq_washer.h"
 
@@ -23,6 +23,7 @@ namespace phicore::thinq::ipc {
 namespace str = phi::str;
 namespace v1 = phicore::adapter::v1;
 namespace sdk = phicore::adapter::sdk;
+namespace mqtt = phi::runtime::mqtt;
 
 using namespace std::chrono_literals;
 
@@ -143,10 +144,10 @@ protected:
             return false;
         }
         m_running = true;
-        m_mqtt = std::make_unique<MqttClient>(*m_loop);
+        m_mqtt = std::make_unique<mqtt::Client>(*m_loop);
         m_mqtt->onConnected([this] { onBrokerConnected(); });
         m_mqtt->onDisconnected([this](const std::string &reason) { onBrokerDisconnected(reason); });
-        m_mqtt->onMessage([this](const MqttClient::Message &message) { onBrokerMessage(message); });
+        m_mqtt->onMessage([this](const mqtt::Message &message) { onBrokerMessage(message); });
         m_staleTimer = m_loop->timerEvery(kStaleCheck, [this] { checkStale(); });
         return true;
     }
@@ -259,14 +260,14 @@ private:
         m_mqtt->disconnect();
         setConnected(false);
 
-        MqttSettings mqtt;
-        mqtt.clientId = "phi-thinq-" + std::string(m_info.externalId().empty() ? "1" : m_info.externalId());
-        mqtt.host = m_settings.brokerHost;
-        mqtt.port = m_settings.brokerPort;
-        mqtt.username = m_settings.username;
-        mqtt.password = m_settings.password;
+        mqtt::Settings broker;
+        broker.clientId = "phi-thinq-" + std::string(m_info.externalId().empty() ? "1" : m_info.externalId());
+        broker.host = m_settings.brokerHost;
+        broker.port = m_settings.brokerPort;
+        broker.username = m_settings.username;
+        broker.password = m_settings.password;
         std::string error;
-        if (!m_mqtt->connect(mqtt, &error)) {
+        if (!m_mqtt->connect(broker, &error)) {
             log(sdk::LogLevel::Warn, sdk::LogCategory::Network, "cannot connect to %1:%2: %3",
                 {m_settings.brokerHost, std::to_string(m_settings.brokerPort), error});
             scheduleRetry();
@@ -299,7 +300,7 @@ private:
         scheduleRetry();
     }
 
-    void onBrokerMessage(const MqttClient::Message &message)
+    void onBrokerMessage(const mqtt::Message &message)
     {
         const std::optional<DeviceMessage> parsed = parseDeviceMessage(message.payload);
         if (!parsed) {
@@ -717,7 +718,7 @@ private:
     bool m_connected = false;
     v1::Adapter m_info;
     ThinqSettings m_settings;
-    std::unique_ptr<MqttClient> m_mqtt;
+    std::unique_ptr<mqtt::Client> m_mqtt;
     phi::runtime::Timer m_retry;
     phi::runtime::Timer m_staleTimer;
     std::map<std::string, Appliance> m_appliances;
