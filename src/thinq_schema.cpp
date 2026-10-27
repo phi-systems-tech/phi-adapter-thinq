@@ -82,6 +82,8 @@ v1::AdapterCapabilities capabilities()
     v1::AdapterCapabilities caps;
     caps.setRequired(v1::AdapterRequirement::ManualConfirm | v1::AdapterRequirement::UsesRetryInterval)
         .setOptional(v1::AdapterRequirement::Host | v1::AdapterRequirement::Port)
+        // Mirroring the appliances' session to LG keeps the ThinQ app working.
+        .setFlags(v1::AdapterCapability::VendorCloudLink)
         // The box answers in LG's place; the appliance finds it by name.
         .setTopologies(v1::Topology::CloudStandIn)
         .setStandInRedirect(v1::StandInRedirect::Dns);
