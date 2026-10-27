@@ -1,3 +1,10 @@
+phi-adapter-thinq (0.1.13-1) trixie; urgency=medium
+
+  * MQTT client from phi-runtime (libphi-runtime-mqtt); the adapter's own
+    copy is gone.
+
+ -- Marius Schumacher <marius.schumacher@phisys.com>  Tue, 27 Oct 2026 21:10:59 +0100
+
 phi-adapter-thinq (0.1.11-1) trixie; urgency=medium
 
   * Rebuilt against phi-adapter-sdk 0.29.0 (network clients).
