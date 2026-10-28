@@ -150,7 +150,7 @@ In order of "nothing works without it":
    not written anywhere we have; it is in the appliance's manual.** The
    washer is the second candidate; it has the unverified frame layout, the
    dishwasher is read-only and the safer first.
-3. iPhone: Mirroring to the Mac off. Phi Magic, +, "Set up a WiFi appliance
+3. iPhone: Mirroring to the Mac off. PhiMagic, +, "Set up a WiFi appliance
    instead". Name of the appliance's WiFi as the display shows it, home
    network (prefilled when the location permission was given), home
    password, box name. "Set up the appliance". iOS asks once to join.
